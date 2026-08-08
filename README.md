@@ -62,4 +62,4 @@ cd infra
 docker compose up --build
 ```
 
-打开 `http://localhost:8080`。本机仅开发 Web 时使用 `http://localhost:5173`。
+打开 `http://localhost:8180`。本机仅开发 Web 时使用 `http://localhost:5173`。

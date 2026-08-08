@@ -40,7 +40,7 @@ services:
       timeout: 5s
       retries: 5
     ports:
-      - "127.0.0.1:9001:9001"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9101}:9001"
     volumes:
       - minio-data:/data
     networks: [backend]
@@ -84,7 +84,7 @@ services:
   worker:
     build:
       context: ../apps/api
-    command: ["celery", "-A", "apt_hunter.worker.celery_app:celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+    command: ["celery", "-A", "apt_hunter.worker.celery_app:celery_app", "worker", "--loglevel=INFO", "--concurrency=${WORKER_CONCURRENCY:-1}"]
     environment: *api-environment
     depends_on:
       migrate:
@@ -108,7 +108,7 @@ services:
       context: ..
       dockerfile: apps/web/Dockerfile
     ports:
-      - "8080:8080"
+      - "${WEB_PORT:-8180}:8080"
     depends_on:
       api:
         condition: service_healthy
