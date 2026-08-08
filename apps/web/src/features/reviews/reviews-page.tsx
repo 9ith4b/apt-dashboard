@@ -34,6 +34,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import { FieldGroup } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -41,6 +43,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   decideReview,
   enrichReport,
+  eventQueryKey,
   getReport,
   listReviewQueue,
   reportQueryKey,
@@ -56,6 +59,10 @@ import type {
   ReportDetail,
   ReportSummary,
 } from "@/features/intelligence/intelligence-types"
+import {
+  EntityReviewCard,
+  type ReviewEntity,
+} from "@/features/reviews/entity-review-card"
 import { cn } from "@/lib/utils"
 
 const REVIEW_LABELS = {
@@ -108,58 +115,36 @@ function QueueRow({
   )
 }
 
-function DiamondCard({
-  title,
-  description,
-  icon: Icon,
-  entities,
-}: {
-  title: string
-  description: string
-  icon: typeof TargetIcon
-  entities: DiamondEntity[]
-}) {
-  return (
-    <Card className="min-w-0 gap-3 py-4">
-      <CardHeader className="px-4">
-        <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
-            <Icon aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <CardTitle className="text-sm">{title}</CardTitle>
-            <CardDescription>{description}</CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2 px-4">
-        {entities.length ? (
-          entities.slice(0, 6).map((entity) => (
-            <div
-              className="rounded-md border border-border bg-background/45 p-3"
-              key={`${entity.type}-${entity.name}`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="min-w-0 truncate text-sm font-medium">
-                  {entity.name}
-                </span>
-                <Badge variant="outline">{entity.confidence}%</Badge>
-              </div>
-              {entity.evidence && (
-                <p className="mt-2 line-clamp-3 text-xs leading-5 text-muted-foreground">
-                  {entity.evidence}
-                </p>
-              )}
-            </div>
-          ))
-        ) : (
-          <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
-            未从正文中提取到，不作推断。
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  )
+function reviewEntities(
+  dimension: string,
+  extracted: DiamondEntity[],
+  reviewed: DiamondEntity[] | null
+): ReviewEntity[] {
+  const selected = reviewed ?? extracted
+  return selected.map((entity, index) => ({
+    ...entity,
+    id: `${dimension}-${index}-${entity.type}-${entity.name}`,
+    included: true,
+    origin:
+      reviewed &&
+      !extracted.some(
+        (candidate) =>
+          candidate.type === entity.type && candidate.name === entity.name
+      )
+        ? "analyst"
+        : "auto",
+  }))
+}
+
+function selectedEntities(entities: ReviewEntity[]): DiamondEntity[] {
+  return entities
+    .filter((entity) => entity.included)
+    .map(({ name, type, confidence, evidence }) => ({
+      name,
+      type,
+      confidence,
+      evidence,
+    }))
 }
 
 function EnrichmentState({
@@ -212,12 +197,49 @@ function ReviewWorkbench({
   const queryClient = useQueryClient()
   const analysis = report.analysis!
   const [note, setNote] = useState(analysis.analyst_note ?? "")
+  const [eventTitle, setEventTitle] = useState(report.title)
+  const [analystConfidence, setAnalystConfidence] = useState(
+    String(analysis.confidence_auto ?? "")
+  )
+  const [actors, setActors] = useState(() =>
+    reviewEntities("actor", analysis.actors, analysis.reviewed_actors)
+  )
+  const [capabilities, setCapabilities] = useState(() =>
+    reviewEntities(
+      "capability",
+      analysis.capabilities,
+      analysis.reviewed_capabilities
+    )
+  )
+  const [infrastructure, setInfrastructure] = useState(() =>
+    reviewEntities(
+      "infrastructure",
+      analysis.infrastructure,
+      analysis.reviewed_infrastructure
+    )
+  )
+  const [victims, setVictims] = useState(() =>
+    reviewEntities("victim", analysis.victims, analysis.reviewed_victims)
+  )
+  const parsedConfidence = Number(analystConfidence)
+  const confidenceIsValid =
+    analystConfidence === "" ||
+    (Number.isInteger(parsedConfidence) &&
+      parsedConfidence >= 0 &&
+      parsedConfidence <= 100)
+  const isPending = analysis.review_status === "pending"
   const decisionMutation = useMutation({
     mutationFn: (decision: "approved" | "rejected") =>
       decideReview(report.id, {
         decision,
         analyst_note: note.trim() || null,
         expected_version: analysis.version,
+        actors: selectedEntities(actors),
+        capabilities: selectedEntities(capabilities),
+        infrastructure: selectedEntities(infrastructure),
+        victims: selectedEntities(victims),
+        event_title: eventTitle.trim() || report.title,
+        confidence_analyst: analystConfidence === "" ? null : parsedConfidence,
       }),
     onSuccess: (updated) => {
       toast.success(
@@ -225,6 +247,7 @@ function ReviewWorkbench({
       )
       void queryClient.invalidateQueries({ queryKey: reviewQueueKey })
       void queryClient.invalidateQueries({ queryKey: reportQueryKey })
+      void queryClient.invalidateQueries({ queryKey: eventQueryKey })
       void queryClient.invalidateQueries({ queryKey: ["report", report.id] })
       onCompleted()
     },
@@ -271,9 +294,9 @@ function ReviewWorkbench({
         <section>
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h3 className="font-semibold">钻石模型自动拆解</h3>
+              <h3 className="font-semibold">钻石模型字段复核</h3>
               <p className="text-sm text-muted-foreground">
-                每个字段都附带正文证据，缺失项保持为空。
+                保留可信字段、排除误报，或补充人工确认的实体。
               </p>
             </div>
             <Button
@@ -287,29 +310,41 @@ function ReviewWorkbench({
             </Button>
           </div>
           <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
-            <DiamondCard
+            <EntityReviewCard
               title="对手"
               description="攻击组织与别名"
               icon={TargetIcon}
-              entities={analysis.actors}
+              defaultType="threat-actor"
+              entities={actors}
+              onChange={setActors}
+              readOnly={!isPending}
             />
-            <DiamondCard
+            <EntityReviewCard
               title="能力"
               description="战术、技术与工具"
               icon={ZapIcon}
-              entities={analysis.capabilities}
+              defaultType="capability"
+              entities={capabilities}
+              onChange={setCapabilities}
+              readOnly={!isPending}
             />
-            <DiamondCard
+            <EntityReviewCard
               title="基础设施"
               description="域名、IP 与 URL"
               icon={NetworkIcon}
-              entities={analysis.infrastructure}
+              defaultType="domain-name"
+              entities={infrastructure}
+              onChange={setInfrastructure}
+              readOnly={!isPending}
             />
-            <DiamondCard
+            <EntityReviewCard
               title="受害者"
               description="行业、角色与区域"
               icon={Building2Icon}
-              entities={analysis.victims}
+              defaultType="victim-sector"
+              entities={victims}
+              onChange={setVictims}
+              readOnly={!isPending}
             />
           </div>
         </section>
@@ -360,32 +395,78 @@ function ReviewWorkbench({
           </Card>
         </div>
 
-        <Field>
-          <FieldLabel htmlFor="analyst-note">分析员备注</FieldLabel>
-          <Textarea
-            id="analyst-note"
-            maxLength={5000}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="记录归因依据、疑点、需要补充的证据或驳回原因…"
-            rows={4}
-            value={note}
-          />
-          <FieldDescription>
-            备注将与审核决定一起留存，便于后续追溯。
-          </FieldDescription>
-        </Field>
+        <Card>
+          <CardHeader>
+            <CardTitle>审核结论</CardTitle>
+            <CardDescription>
+              通过后将按以下信息生成可持续跟踪的威胁事件。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup>
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_12rem]">
+                <Field>
+                  <FieldLabel htmlFor="event-title">事件标题</FieldLabel>
+                  <Input
+                    disabled={!isPending}
+                    id="event-title"
+                    maxLength={500}
+                    onChange={(event) => setEventTitle(event.target.value)}
+                    value={eventTitle}
+                  />
+                </Field>
+                <Field data-invalid={!confidenceIsValid || undefined}>
+                  <FieldLabel htmlFor="analyst-confidence">
+                    人工置信度
+                  </FieldLabel>
+                  <Input
+                    aria-invalid={!confidenceIsValid || undefined}
+                    disabled={!isPending}
+                    id="analyst-confidence"
+                    max={100}
+                    min={0}
+                    onChange={(event) =>
+                      setAnalystConfidence(event.target.value)
+                    }
+                    type="number"
+                    value={analystConfidence}
+                  />
+                </Field>
+              </div>
+              <Field>
+                <FieldLabel htmlFor="analyst-note">分析员备注</FieldLabel>
+                <Textarea
+                  disabled={!isPending}
+                  id="analyst-note"
+                  maxLength={5000}
+                  onChange={(event) => setNote(event.target.value)}
+                  placeholder="记录归因依据、疑点、需要补充的证据或驳回原因…"
+                  rows={4}
+                  value={note}
+                />
+                <FieldDescription>
+                  字段快照、备注和审核人将形成独立修订记录，便于追溯。
+                </FieldDescription>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="flex flex-col gap-3 border-t border-border bg-card px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p className="text-sm text-muted-foreground">
-          {analysis.review_status === "pending"
-            ? "通过后材料进入已确认情报；驳回后仍保留正文与审核记录。"
+          {isPending
+            ? `已保留 ${selectedEntities(actors).length + selectedEntities(capabilities).length + selectedEntities(infrastructure).length + selectedEntities(victims).length} 个字段；通过后生成威胁事件。`
             : `该材料已${REVIEW_LABELS[analysis.review_status]}，版本 ${analysis.version}。`}
         </p>
-        {analysis.review_status === "pending" && (
+        {isPending && (
           <div className="flex gap-2">
             <Button
-              disabled={decisionMutation.isPending}
+              disabled={
+                decisionMutation.isPending ||
+                !confidenceIsValid ||
+                !eventTitle.trim()
+              }
               onClick={() => decisionMutation.mutate("rejected")}
               variant="outline"
             >

@@ -6,10 +6,10 @@ from pydantic import BaseModel, Field
 
 
 class DiamondEntity(BaseModel):
-    name: str
-    type: str
+    name: str = Field(min_length=1, max_length=500)
+    type: str = Field(min_length=1, max_length=100)
     confidence: int = Field(ge=0, le=100)
-    evidence: str = ""
+    evidence: str = Field(default="", max_length=5000)
 
 
 class ReportSummary(BaseModel):
@@ -43,6 +43,10 @@ class AnalysisRead(BaseModel):
     infrastructure: list[DiamondEntity]
     victims: list[DiamondEntity]
     evidence: list[dict[str, object]]
+    reviewed_actors: list[DiamondEntity] | None
+    reviewed_capabilities: list[DiamondEntity] | None
+    reviewed_infrastructure: list[DiamondEntity] | None
+    reviewed_victims: list[DiamondEntity] | None
     confidence_auto: int | None
     method_version: str
     analyst_note: str | None
@@ -67,3 +71,20 @@ class ReviewDecision(BaseModel):
     analyst_note: str | None = Field(default=None, max_length=5000)
     expected_version: int = Field(ge=1)
     reviewed_by: str = Field(default="local-analyst", min_length=1, max_length=100)
+    actors: list[DiamondEntity] | None = None
+    capabilities: list[DiamondEntity] | None = None
+    infrastructure: list[DiamondEntity] | None = None
+    victims: list[DiamondEntity] | None = None
+    event_title: str | None = Field(default=None, min_length=1, max_length=500)
+    confidence_analyst: int | None = Field(default=None, ge=0, le=100)
+
+
+class AnalysisRevisionRead(BaseModel):
+    id: UUID
+    report_id: UUID
+    review_version: int
+    decision: Literal["approved", "rejected"]
+    snapshot: dict[str, object]
+    analyst_note: str | None
+    reviewed_by: str
+    created_at: datetime

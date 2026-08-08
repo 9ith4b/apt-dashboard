@@ -111,7 +111,9 @@ describe("analyst review workbench", () => {
     expect(await screen.findByText("Lazarus Group")).toBeInTheDocument()
     expect(screen.getByText("Social engineering")).toBeInTheDocument()
     expect(screen.getByText("Technology companies")).toBeInTheDocument()
-    expect(screen.getByText("未从正文中提取到，不作推断。")).toBeInTheDocument()
+    expect(
+      screen.getByText("未从正文中提取到，可由分析员手动补充。")
+    ).toBeInTheDocument()
   })
 
   it("submits the analyst note with an approval decision", async () => {

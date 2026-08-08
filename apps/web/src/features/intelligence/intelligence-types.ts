@@ -36,6 +36,10 @@ export type ReportAnalysis = {
   infrastructure: DiamondEntity[]
   victims: DiamondEntity[]
   evidence: Array<{ dimension?: string; entity?: string; quote?: string }>
+  reviewed_actors: DiamondEntity[] | null
+  reviewed_capabilities: DiamondEntity[] | null
+  reviewed_infrastructure: DiamondEntity[] | null
+  reviewed_victims: DiamondEntity[] | null
   confidence_auto: number | null
   method_version: string
   analyst_note: string | null
@@ -53,10 +57,41 @@ export type ReviewDecision = {
   decision: "approved" | "rejected"
   analyst_note: string | null
   expected_version: number
+  actors: DiamondEntity[]
+  capabilities: DiamondEntity[]
+  infrastructure: DiamondEntity[]
+  victims: DiamondEntity[]
+  event_title: string
+  confidence_analyst: number | null
 }
 
 export type ReportTask = {
   task_id: string
   report_id: string
   status: "queued"
+}
+
+export type ThreatEventSummary = {
+  id: string
+  title: string
+  summary: string
+  status: string
+  confidence_auto: number | null
+  confidence_analyst: number | null
+  first_seen: string | null
+  last_seen: string | null
+  report_count: number
+  actor_names: string[]
+  created_at: string
+  updated_at: string
+}
+
+export type ThreatEventDetail = ThreatEventSummary & {
+  diamond: {
+    actors: DiamondEntity[]
+    capabilities: DiamondEntity[]
+    infrastructure: DiamondEntity[]
+    victims: DiamondEntity[]
+  }
+  reports: ReportSummary[]
 }

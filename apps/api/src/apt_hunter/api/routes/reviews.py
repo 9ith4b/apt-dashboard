@@ -8,11 +8,34 @@ from sqlalchemy.orm import Session
 
 from apt_hunter.api.routes.reports import _analysis_read, _report_row, _summary
 from apt_hunter.db.session import get_db
-from apt_hunter.models import Report, ReportAnalysis, Source
-from apt_hunter.schemas.report import ReportDetail, ReportSummary, ReviewDecision
+from apt_hunter.models import (
+    AnalysisRevision,
+    EventReport,
+    Report,
+    ReportAnalysis,
+    Source,
+    ThreatEvent,
+)
+from apt_hunter.schemas.report import (
+    AnalysisRevisionRead,
+    DiamondEntity,
+    ReportDetail,
+    ReportSummary,
+    ReviewDecision,
+)
 
 router = APIRouter()
 DbSession = Annotated[Session, Depends(get_db)]
+
+
+def _entity_payload(
+    requested: list[DiamondEntity] | None,
+    reviewed: list[dict[str, object]] | None,
+    extracted: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    if requested is not None:
+        return [entity.model_dump() for entity in requested]
+    return reviewed if reviewed is not None else extracted
 
 
 @router.get("", response_model=list[ReportSummary])
@@ -35,6 +58,22 @@ def list_review_queue(
     ]
 
 
+@router.get("/{report_id}/revisions", response_model=list[AnalysisRevisionRead])
+def list_review_revisions(
+    report_id: UUID,
+    session: DbSession,
+) -> list[AnalysisRevisionRead]:
+    revisions = session.scalars(
+        select(AnalysisRevision)
+        .where(AnalysisRevision.report_id == report_id)
+        .order_by(AnalysisRevision.review_version.desc())
+    )
+    return [
+        AnalysisRevisionRead.model_validate(revision, from_attributes=True)
+        for revision in revisions
+    ]
+
+
 @router.post("/{report_id}/decision", response_model=ReportDetail)
 def decide_review(
     report_id: UUID,
@@ -49,6 +88,25 @@ def decide_review(
             status_code=status.HTTP_409_CONFLICT,
             detail="The article must finish enrichment before it can be reviewed",
         )
+    if analysis.review_status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This report already has a review decision",
+        )
+
+    actors = _entity_payload(payload.actors, analysis.reviewed_actors, analysis.actors)
+    capabilities = _entity_payload(
+        payload.capabilities,
+        analysis.reviewed_capabilities,
+        analysis.capabilities,
+    )
+    infrastructure = _entity_payload(
+        payload.infrastructure,
+        analysis.reviewed_infrastructure,
+        analysis.infrastructure,
+    )
+    victims = _entity_payload(payload.victims, analysis.reviewed_victims, analysis.victims)
+    review_version = payload.expected_version + 1
 
     updated_report_id = session.scalar(
         update(ReportAnalysis)
@@ -56,9 +114,14 @@ def decide_review(
             ReportAnalysis.report_id == report_id,
             ReportAnalysis.version == payload.expected_version,
             ReportAnalysis.extraction_status == "ready",
+            ReportAnalysis.review_status == "pending",
         )
         .values(
             review_status=payload.decision,
+            reviewed_actors=actors,
+            reviewed_capabilities=capabilities,
+            reviewed_infrastructure=infrastructure,
+            reviewed_victims=victims,
             analyst_note=payload.analyst_note,
             reviewed_at=datetime.now(UTC),
             reviewed_by=payload.reviewed_by,
@@ -77,6 +140,59 @@ def decide_review(
         session.rollback()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     report.status = payload.decision
+
+    snapshot: dict[str, object] = {
+        "actors": actors,
+        "capabilities": capabilities,
+        "infrastructure": infrastructure,
+        "victims": victims,
+        "confidence_analyst": payload.confidence_analyst,
+    }
+    session.add(
+        AnalysisRevision(
+            report_id=report_id,
+            review_version=review_version,
+            decision=payload.decision,
+            snapshot=snapshot,
+            analyst_note=payload.analyst_note,
+            reviewed_by=payload.reviewed_by,
+        )
+    )
+
+    if payload.decision == "approved":
+        event_link = session.scalar(select(EventReport).where(EventReport.report_id == report_id))
+        event = session.get(ThreatEvent, event_link.event_id) if event_link else None
+        observed_at = report.published_at or report.created_at
+        event_title = payload.event_title or report.title
+        event_summary = report.normalized_text.strip() or analysis.content_text[:1000]
+        if event is None:
+            event = ThreatEvent(
+                title=event_title,
+                summary=event_summary,
+                status="confirmed",
+                confidence_auto=analysis.confidence_auto,
+                confidence_analyst=payload.confidence_analyst,
+                first_seen=observed_at,
+                last_seen=observed_at,
+            )
+            session.add(event)
+            session.flush()
+            session.add(
+                EventReport(
+                    event_id=event.id,
+                    report_id=report_id,
+                    evidence_role="primary",
+                )
+            )
+        else:
+            event.title = event_title
+            event.summary = event_summary
+            event.status = "confirmed"
+            event.confidence_auto = analysis.confidence_auto
+            event.confidence_analyst = payload.confidence_analyst
+            event.first_seen = observed_at
+            event.last_seen = observed_at
+            event.version += 1
     session.commit()
 
     report, source, refreshed = _report_row(session, report_id)

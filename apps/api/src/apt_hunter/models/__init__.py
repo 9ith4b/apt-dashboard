@@ -1,3 +1,17 @@
-from apt_hunter.models.intelligence import EventReport, Report, ReportAnalysis, Source, ThreatEvent
+from apt_hunter.models.intelligence import (
+    AnalysisRevision,
+    EventReport,
+    Report,
+    ReportAnalysis,
+    Source,
+    ThreatEvent,
+)
 
-__all__ = ["EventReport", "Report", "ReportAnalysis", "Source", "ThreatEvent"]
+__all__ = [
+    "AnalysisRevision",
+    "EventReport",
+    "Report",
+    "ReportAnalysis",
+    "Source",
+    "ThreatEvent",
+]

@@ -5,10 +5,13 @@ import type {
   ReportSummary,
   ReportTask,
   ReviewDecision,
+  ThreatEventDetail,
+  ThreatEventSummary,
 } from "./intelligence-types"
 
 export const reportQueryKey = ["reports"] as const
 export const reviewQueueKey = ["reviews"] as const
+export const eventQueryKey = ["events"] as const
 
 export function listReports() {
   return apiRequest<ReportSummary[]>("/reports?limit=200")
@@ -35,4 +38,12 @@ export function decideReview(reportId: string, payload: ReviewDecision) {
     method: "POST",
     body: JSON.stringify(payload),
   })
+}
+
+export function listThreatEvents() {
+  return apiRequest<ThreatEventSummary[]>("/events?limit=200")
+}
+
+export function getThreatEvent(eventId: string) {
+  return apiRequest<ThreatEventDetail>(`/events/${eventId}`)
 }

@@ -116,12 +116,37 @@ class ReportAnalysis(TimestampMixin, Base):
     )
     victims: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list, nullable=False)
     evidence: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list, nullable=False)
+    reviewed_actors: Mapped[list[dict[str, object]] | None] = mapped_column(JSON)
+    reviewed_capabilities: Mapped[list[dict[str, object]] | None] = mapped_column(JSON)
+    reviewed_infrastructure: Mapped[list[dict[str, object]] | None] = mapped_column(JSON)
+    reviewed_victims: Mapped[list[dict[str, object]] | None] = mapped_column(JSON)
     confidence_auto: Mapped[int | None] = mapped_column(Integer)
     method_version: Mapped[str] = mapped_column(String(32), default="rules-v1", nullable=False)
     analyst_note: Mapped[str | None] = mapped_column(Text)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reviewed_by: Mapped[str | None] = mapped_column(String(100))
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+
+class AnalysisRevision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "analysis_revisions"
+    __table_args__ = (
+        CheckConstraint(
+            "decision IN ('approved', 'rejected')",
+            name="analysis_revision_decision",
+        ),
+        CheckConstraint("review_version >= 2", name="analysis_revision_version_positive"),
+        UniqueConstraint("report_id", "review_version", name="uq_analysis_revision_version"),
+    )
+
+    report_id: Mapped[UUID] = mapped_column(
+        ForeignKey("reports.id", ondelete="CASCADE"), nullable=False
+    )
+    review_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    decision: Mapped[str] = mapped_column(String(32), nullable=False)
+    snapshot: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    analyst_note: Mapped[str | None] = mapped_column(Text)
+    reviewed_by: Mapped[str] = mapped_column(String(100), nullable=False)
 
 
 class ThreatEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -140,6 +165,7 @@ class ThreatEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class EventReport(TimestampMixin, Base):
     __tablename__ = "event_reports"
+    __table_args__ = (UniqueConstraint("report_id", name="uq_event_reports_report_id"),)
 
     event_id: Mapped[UUID] = mapped_column(
         ForeignKey("threat_events.id", ondelete="CASCADE"), primary_key=True

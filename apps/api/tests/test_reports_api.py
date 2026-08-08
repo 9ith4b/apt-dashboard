@@ -93,12 +93,67 @@ def test_review_decision_is_versioned(review_client: tuple[TestClient, str]) -> 
         "decision": "approved",
         "analyst_note": "Evidence confirmed.",
         "expected_version": 1,
+        "event_title": "APT29 diplomatic phishing campaign",
+        "confidence_analyst": 92,
+        "actors": [
+            {
+                "name": "Midnight Blizzard",
+                "type": "threat-actor",
+                "confidence": 95,
+                "evidence": "Analyst normalized APT29 to its preferred name.",
+            }
+        ],
+        "capabilities": [
+            {
+                "name": "Spearphishing",
+                "type": "attack-pattern",
+                "confidence": 90,
+                "evidence": "The report describes targeted phishing emails.",
+            }
+        ],
+        "infrastructure": [],
+        "victims": [],
     }
 
     approved = client.post(f"/api/v1/reviews/{report_id}/decision", json=payload)
     stale = client.post(f"/api/v1/reviews/{report_id}/decision", json=payload)
+    events = client.get("/api/v1/events")
+    revisions = client.get(f"/api/v1/reviews/{report_id}/revisions")
 
     assert approved.status_code == 200
     assert approved.json()["status"] == "approved"
     assert approved.json()["analysis"]["version"] == 2
+    assert approved.json()["analysis"]["reviewed_actors"][0]["name"] == "Midnight Blizzard"
     assert stale.status_code == 409
+    assert events.status_code == 200
+    assert events.json()[0]["title"] == "APT29 diplomatic phishing campaign"
+    assert events.json()[0]["actor_names"] == ["Midnight Blizzard"]
+    event_id = events.json()[0]["id"]
+    event = client.get(f"/api/v1/events/{event_id}")
+    assert event.status_code == 200
+    assert event.json()["diamond"]["capabilities"][0]["name"] == "Spearphishing"
+    assert event.json()["reports"][0]["id"] == report_id
+    assert revisions.status_code == 200
+    assert revisions.json()[0]["review_version"] == 2
+    assert revisions.json()[0]["snapshot"]["infrastructure"] == []
+
+
+def test_rejected_review_does_not_create_event(review_client: tuple[TestClient, str]) -> None:
+    client, report_id = review_client
+
+    rejected = client.post(
+        f"/api/v1/reviews/{report_id}/decision",
+        json={
+            "decision": "rejected",
+            "analyst_note": "The article does not contain enough attribution evidence.",
+            "expected_version": 1,
+            "actors": [],
+            "capabilities": [],
+            "infrastructure": [],
+            "victims": [],
+        },
+    )
+
+    assert rejected.status_code == 200
+    assert rejected.json()["analysis"]["reviewed_actors"] == []
+    assert client.get("/api/v1/events").json() == []
