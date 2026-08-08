@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Uuid,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -519,3 +520,98 @@ class CampaignEvent(TimestampMixin, Base):
     evidence_note: Mapped[str] = mapped_column(Text, default="", nullable=False)
     reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     reviewed_by: Mapped[str] = mapped_column(String(100), nullable=False)
+
+
+class WatchRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "watch_rules"
+    __table_args__ = (
+        CheckConstraint(
+            "severity IN ('info', 'low', 'medium', 'high', 'critical')",
+            name="watch_rule_severity_value",
+        ),
+        CheckConstraint("version >= 1", name="watch_rule_version_positive"),
+        UniqueConstraint("name", name="uq_watch_rules_name"),
+        Index("ix_watch_rules_enabled_severity", "enabled", "severity"),
+    )
+
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    conditions: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
+    severity: Mapped[str] = mapped_column(String(32), default="medium", nullable=False)
+    enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
+    created_by: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+
+class WatchRuleHit(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "watch_rule_hits"
+    __table_args__ = (
+        UniqueConstraint(
+            "rule_id", "subject_type", "subject_id", name="uq_watch_rule_hits_subject"
+        ),
+        Index("ix_watch_rule_hits_rule_created", "rule_id", "created_at"),
+        Index("ix_watch_rule_hits_subject", "subject_type", "subject_id"),
+    )
+
+    rule_id: Mapped[UUID] = mapped_column(
+        ForeignKey("watch_rules.id", ondelete="CASCADE"), nullable=False
+    )
+    subject_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    subject_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    matched_on: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
+
+
+class Notification(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "notifications"
+    __table_args__ = (
+        CheckConstraint(
+            "severity IN ('info', 'low', 'medium', 'high', 'critical')",
+            name="notification_severity_value",
+        ),
+        UniqueConstraint("hit_id", name="uq_notifications_hit_id"),
+        Index("ix_notifications_read_created", "read_at", "created_at"),
+    )
+
+    hit_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("watch_rule_hits.id", ondelete="CASCADE")
+    )
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    severity: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_id: Mapped[UUID | None] = mapped_column(Uuid)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class OperationJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "operation_jobs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('queued', 'running', 'succeeded', 'failed', 'canceled')",
+            name="operation_job_status_value",
+        ),
+        CheckConstraint("progress BETWEEN 0 AND 100", name="operation_job_progress_range"),
+        CheckConstraint("attempt >= 1", name="operation_job_attempt_positive"),
+        CheckConstraint("version >= 1", name="operation_job_version_positive"),
+        UniqueConstraint("task_id", name="uq_operation_jobs_task_id"),
+        Index("ix_operation_jobs_status_created", "status", "created_at"),
+        Index("ix_operation_jobs_subject", "subject_type", "subject_id"),
+    )
+
+    task_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    job_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    subject_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    subject_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="queued", nullable=False)
+    progress: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    attempt: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    payload: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
+    result: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
+    error: Mapped[str | None] = mapped_column(Text)
+    requested_by: Mapped[str] = mapped_column(String(100), nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    parent_job_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("operation_jobs.id", ondelete="SET NULL")
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)

@@ -6,6 +6,7 @@ import {
   FileCheck2Icon,
   GitBranchIcon,
   HouseIcon,
+  ListTodoIcon,
   RadarIcon,
   SendIcon,
   ShieldUserIcon,
@@ -34,6 +35,7 @@ const navigation = [
   { title: "关注规则", url: "/watch-rules", icon: HouseIcon },
   { title: "数据源", url: "/sources", icon: DatabaseIcon },
   { title: "待审核", url: "/reviews", icon: FileCheck2Icon },
+  { title: "作业中心", url: "/operations", icon: ListTodoIcon },
 ] as const
 
 export function AppSidebar() {

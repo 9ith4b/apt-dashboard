@@ -94,6 +94,27 @@ describe("APT Hunter intelligence feed", () => {
       "fetch",
       vi.fn((input: RequestInfo | URL) => {
         const url = String(input)
+        if (url === "/api/v1/notifications?limit=50") {
+          return Promise.resolve(jsonResponse({ unread_count: 0, items: [] }))
+        }
+        if (url === "/api/v1/search?q=APT29&limit=20") {
+          return Promise.resolve(
+            jsonResponse({
+              query: "APT29",
+              total: 1,
+              results: [
+                {
+                  kind: "actor",
+                  id: "33333333-3333-4333-8333-333333333333",
+                  title: "Midnight Blizzard",
+                  subtitle: "Alias: APT29",
+                  url: "/actors?actor=33333333-3333-4333-8333-333333333333",
+                  score: 80,
+                },
+              ],
+            })
+          )
+        }
         if (url === "/api/v1/reports?limit=200") {
           return Promise.resolve(jsonResponse(reports))
         }
@@ -134,5 +155,16 @@ describe("APT Hunter intelligence feed", () => {
 
     expect(await screen.findByText(reports[1].summary)).toBeInTheDocument()
     expect(screen.getAllByText("排队中").length).toBeGreaterThan(0)
+  })
+
+  it("searches across the intelligence knowledge base", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.type(screen.getByRole("textbox", { name: "全局搜索" }), "APT29")
+
+    expect(
+      await screen.findByRole("link", { name: /Midnight Blizzard/ })
+    ).toHaveAttribute("href", expect.stringContaining("/actors?actor="))
   })
 })

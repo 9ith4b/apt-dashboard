@@ -17,6 +17,8 @@ def test_initial_metadata_contains_intelligence_tables() -> None:
         "indicators",
         "observables",
         "observable_enrichments",
+        "notifications",
+        "operation_jobs",
         "reports",
         "report_analyses",
         "report_observables",
@@ -25,6 +27,8 @@ def test_initial_metadata_contains_intelligence_tables() -> None:
         "threat_actor_aliases",
         "threat_actors",
         "threat_events",
+        "watch_rule_hits",
+        "watch_rules",
         "event_reports",
     }
 

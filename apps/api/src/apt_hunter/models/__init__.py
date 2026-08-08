@@ -11,8 +11,10 @@ from apt_hunter.models.intelligence import (
     Evidence,
     Indicator,
     IndicatorEvidence,
+    Notification,
     Observable,
     ObservableEnrichment,
+    OperationJob,
     Report,
     ReportAnalysis,
     ReportObservable,
@@ -21,6 +23,8 @@ from apt_hunter.models.intelligence import (
     ThreatActor,
     ThreatActorAlias,
     ThreatEvent,
+    WatchRule,
+    WatchRuleHit,
 )
 
 __all__ = [
@@ -38,6 +42,8 @@ __all__ = [
     "IndicatorEvidence",
     "Observable",
     "ObservableEnrichment",
+    "Notification",
+    "OperationJob",
     "Report",
     "ReportAnalysis",
     "ReportObservable",
@@ -46,4 +52,6 @@ __all__ = [
     "ThreatActor",
     "ThreatActorAlias",
     "ThreatEvent",
+    "WatchRule",
+    "WatchRuleHit",
 ]

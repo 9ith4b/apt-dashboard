@@ -6,7 +6,6 @@ import { AppShell } from "@/app/app-shell"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { IntelligenceFeedPage } from "@/features/feed/intelligence-feed-page"
-import { PlaceholderPage } from "@/features/shared/placeholder-page"
 import { SourcesPage } from "@/features/sources/sources-page"
 
 const EventsPage = lazy(() =>
@@ -34,6 +33,16 @@ const CampaignsPage = lazy(() =>
     default: module.CampaignsPage,
   }))
 )
+const WatchRulesPage = lazy(() =>
+  import("@/features/watch-rules/watch-rules-page").then((module) => ({
+    default: module.WatchRulesPage,
+  }))
+)
+const OperationsPage = lazy(() =>
+  import("@/features/operations/operations-page").then((module) => ({
+    default: module.OperationsPage,
+  }))
+)
 
 function PageFallback() {
   return (
@@ -51,10 +60,6 @@ const queryClient = new QueryClient({
     },
   },
 })
-
-const placeholderRoutes = [
-  ["/watch-rules", "关注规则", "关注条件和命中预览将在 M4 阶段接入。"],
-] as const
 
 export function App() {
   return (
@@ -106,15 +111,22 @@ export function App() {
                   </Suspense>
                 }
               />
-              {placeholderRoutes.map(([path, title, description]) => (
-                <Route
-                  key={path}
-                  path={path}
-                  element={
-                    <PlaceholderPage title={title} description={description} />
-                  }
-                />
-              ))}
+              <Route
+                path="/watch-rules"
+                element={
+                  <Suspense fallback={<PageFallback />}>
+                    <WatchRulesPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/operations"
+                element={
+                  <Suspense fallback={<PageFallback />}>
+                    <OperationsPage />
+                  </Suspense>
+                }
+              />
             </Route>
           </Routes>
         </BrowserRouter>

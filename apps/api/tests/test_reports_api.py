@@ -293,3 +293,105 @@ def test_actor_tracking_comparison_summary_and_export(
         ).status_code
         == 422
     )
+
+
+def test_watch_rule_auto_hit_notification_and_global_search(
+    review_client: tuple[TestClient, str],
+) -> None:
+    client, report_id = review_client
+    rule = client.post(
+        "/api/v1/watch-rules",
+        json={
+            "name": "APT29 high-confidence phishing",
+            "description": "Track confirmed APT29 phishing events.",
+            "conditions": {
+                "keywords": ["phishing"],
+                "actor_names": ["APT29"],
+                "observable_types": ["domain"],
+                "technique_ids": ["T1566.001"],
+                "min_confidence": 90,
+            },
+            "severity": "high",
+            "enabled": True,
+            "created_by": "analyst",
+        },
+    )
+    assert rule.status_code == 201
+    rule_id = rule.json()["id"]
+    assert client.post(f"/api/v1/watch-rules/{rule_id}/preview").json()["match_count"] == 0
+
+    approved = client.post(
+        f"/api/v1/reviews/{report_id}/decision",
+        json={
+            "decision": "approved",
+            "analyst_note": "Attribution and infrastructure confirmed.",
+            "expected_version": 1,
+            "event_title": "APT29 credential phishing operation",
+            "confidence_analyst": 92,
+            "actors": [
+                {
+                    "name": "APT29",
+                    "type": "threat-actor",
+                    "confidence": 95,
+                    "evidence": "APT29 sent phishing emails.",
+                }
+            ],
+            "capabilities": [],
+            "infrastructure": [],
+            "victims": [],
+        },
+    )
+    assert approved.status_code == 200
+    hits = client.get(f"/api/v1/watch-rules/{rule_id}/hits")
+    assert hits.status_code == 200
+    assert hits.json()[0]["subject_title"] == "APT29 credential phishing operation"
+    assert hits.json()[0]["matched_on"]["technique_ids"] == ["T1566.001"]
+    evaluated = client.post(f"/api/v1/watch-rules/{rule_id}/evaluate")
+    assert evaluated.json()["created_hit_count"] == 0
+    assert evaluated.json()["hit_count"] == 1
+
+    notifications = client.get("/api/v1/notifications")
+    assert notifications.json()["unread_count"] == 1
+    notification_id = notifications.json()["items"][0]["id"]
+    assert client.patch(f"/api/v1/notifications/{notification_id}/read").status_code == 200
+    assert client.get("/api/v1/notifications").json()["unread_count"] == 0
+
+    actor_search = client.get("/api/v1/search?q=APT29")
+    observable_search = client.get("/api/v1/search?q=evil-example.com")
+    report_search = client.get("/api/v1/search?q=phishing")
+    assert actor_search.status_code == 200
+    assert any(item["kind"] == "actor" for item in actor_search.json()["results"])
+    assert any(item["kind"] == "observable" for item in observable_search.json()["results"])
+    assert any(item["kind"] == "report" for item in report_search.json()["results"])
+
+
+def test_persistent_job_cancel_and_retry(
+    review_client: tuple[TestClient, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, report_id = review_client
+    monkeypatch.setattr("apt_hunter.api.routes.reports.dispatch_job", lambda _: None)
+    monkeypatch.setattr("apt_hunter.api.routes.operations.dispatch_job", lambda _: None)
+    monkeypatch.setattr(
+        "apt_hunter.api.routes.operations.celery_app.control.revoke",
+        lambda *_args, **_kwargs: None,
+    )
+
+    queued = client.post(f"/api/v1/reports/{report_id}/enrich")
+    assert queued.status_code == 202
+    jobs = client.get("/api/v1/operations/jobs")
+    assert jobs.status_code == 200
+    job = jobs.json()[0]
+    assert job["task_id"] == queued.json()["task_id"]
+    assert job["status"] == "queued"
+    assert job["subject_id"] == report_id
+
+    canceled = client.post(
+        f"/api/v1/operations/jobs/{job['id']}/cancel?expected_version={job['version']}"
+    )
+    assert canceled.status_code == 200
+    assert canceled.json()["status"] == "canceled"
+    retried = client.post(f"/api/v1/operations/jobs/{job['id']}/retry")
+    assert retried.status_code == 202
+    assert retried.json()["attempt"] == 2
+    assert retried.json()["parent_job_id"] == job["id"]

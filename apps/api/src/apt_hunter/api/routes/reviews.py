@@ -26,6 +26,7 @@ from apt_hunter.schemas.report import (
 from apt_hunter.services.actor_normalization import sync_event_actors_from_reports
 from apt_hunter.services.event_clustering import generate_merge_candidates
 from apt_hunter.services.knowledge import sync_event_knowledge
+from apt_hunter.services.watch_rules import evaluate_event_rules
 
 router = APIRouter()
 DbSession = Annotated[Session, Depends(get_db)]
@@ -199,6 +200,7 @@ def decide_review(
         sync_event_actors_from_reports(session, event.id)
         sync_event_knowledge(session, event.id)
         generate_merge_candidates(session, event.id)
+        evaluate_event_rules(session, event.id)
     session.commit()
 
     report, source, refreshed = _report_row(session, report_id)

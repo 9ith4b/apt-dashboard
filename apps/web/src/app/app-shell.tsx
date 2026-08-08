@@ -1,20 +1,16 @@
-import {
-  BellIcon,
-  BookOpenIcon,
-  CircleUserRoundIcon,
-  SearchIcon,
-} from "lucide-react"
+import { BookOpenIcon, CircleUserRoundIcon } from "lucide-react"
 import type { CSSProperties } from "react"
 import { Outlet, useLocation } from "react-router-dom"
 
 import { AppSidebar } from "@/app/app-sidebar"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { GlobalSearch } from "@/features/system/global-search"
+import { NotificationCenter } from "@/features/system/notification-center"
 
 const routeTitles: Record<string, string> = {
   "/feed": "情报流",
@@ -25,6 +21,7 @@ const routeTitles: Record<string, string> = {
   "/watch-rules": "关注规则",
   "/sources": "数据源",
   "/reviews": "待审核",
+  "/operations": "作业中心",
 }
 
 export function AppShell() {
@@ -49,17 +46,8 @@ export function AppShell() {
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2.5">
-            <div className="relative hidden w-86 xl:block">
-              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                aria-label="搜索事件、IOC 或攻击者"
-                className="pl-9"
-                placeholder="搜索事件、IOC、攻击者…"
-              />
-            </div>
-            <Button aria-label="通知" size="icon" variant="outline">
-              <BellIcon />
-            </Button>
+            <GlobalSearch />
+            <NotificationCenter />
             <Button
               aria-label="知识库"
               className="hidden sm:inline-flex"

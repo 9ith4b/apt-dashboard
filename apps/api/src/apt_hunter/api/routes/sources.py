@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from apt_hunter.db.session import get_db
 from apt_hunter.models import Report, Source
 from apt_hunter.schemas.source import SourceCreate, SourceRead, SourceUpdate, TaskQueued
-from apt_hunter.tasks.rss import poll_source
+from apt_hunter.services.jobs import create_job, dispatch_job
 
 router = APIRouter()
 DbSession = Annotated[Session, Depends(get_db)]
@@ -113,8 +113,17 @@ def queue_source_poll(source_id: UUID, session: DbSession) -> TaskQueued:
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Only RSS sources can be polled in M1",
         )
-    task = poll_source.delay(str(source.id))
-    return TaskQueued(task_id=str(task.id), source_id=source.id)
+    job = create_job(
+        session,
+        job_type="source_poll",
+        subject_type="source",
+        subject_id=source.id,
+        payload={"source_name": source.name},
+    )
+    session.commit()
+    session.refresh(job)
+    dispatch_job(job)
+    return TaskQueued(task_id=job.task_id, source_id=source.id)
 
 
 @router.delete("/{source_id}", status_code=status.HTTP_204_NO_CONTENT)

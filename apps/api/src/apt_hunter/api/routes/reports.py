@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from apt_hunter.db.session import get_db
 from apt_hunter.models import Report, ReportAnalysis, Source
 from apt_hunter.schemas.report import AnalysisRead, ReportDetail, ReportSummary, ReportTaskQueued
-from apt_hunter.tasks.analysis import enrich_report
+from apt_hunter.services.jobs import create_job, dispatch_job
 
 router = APIRouter()
 DbSession = Annotated[Session, Depends(get_db)]
@@ -108,6 +108,14 @@ def queue_report_enrichment(report_id: UUID, session: DbSession) -> ReportTaskQu
         analysis.reviewed_by = None
         analysis.version += 1
     report.status = "candidate"
+    job = create_job(
+        session,
+        job_type="report_enrichment",
+        subject_type="report",
+        subject_id=report.id,
+        payload={"report_title": report.title},
+    )
     session.commit()
-    task = enrich_report.delay(str(report_id))
-    return ReportTaskQueued(task_id=str(task.id), report_id=report_id)
+    session.refresh(job)
+    dispatch_job(job)
+    return ReportTaskQueued(task_id=job.task_id, report_id=report_id)
