@@ -1,3 +1,4 @@
+import gzip
 from typing import Any
 
 import httpx
@@ -119,3 +120,53 @@ def test_fetch_feed_treats_304_as_not_modified(monkeypatch: pytest.MonkeyPatch) 
     assert result.not_modified is True
     assert result.etag == '"next-etag"'
     assert result.items == []
+
+
+def test_fetch_feed_rejects_mime_size_and_compression_bombs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    responses = [
+        httpx.Response(
+            200,
+            content=b"not a feed",
+            headers={"content-type": "application/octet-stream"},
+            request=httpx.Request("GET", "https://example.com/feed"),
+        ),
+        httpx.Response(
+            200,
+            content=gzip.compress(RSS_SAMPLE),
+            headers={
+                "content-type": "application/rss+xml",
+                "content-encoding": "gzip",
+                "content-length": "1",
+            },
+            request=httpx.Request("GET", "https://example.com/feed"),
+        ),
+    ]
+
+    class FakeClient:
+        def __init__(self, **_: Any) -> None:
+            pass
+
+        def __enter__(self) -> "FakeClient":
+            return self
+
+        def __exit__(self, *_: Any) -> None:
+            pass
+
+        def get(self, _: str) -> httpx.Response:
+            return responses.pop(0)
+
+    monkeypatch.setattr("apt_hunter.services.rss.validate_public_feed_url", lambda _: None)
+    monkeypatch.setattr("apt_hunter.services.rss.httpx.Client", FakeClient)
+    arguments = {
+        "etag": None,
+        "last_modified": None,
+        "timeout_seconds": 5,
+        "user_agent": "APT-Hunter-Test",
+    }
+
+    with pytest.raises(ValueError, match="content type"):
+        fetch_feed("https://example.com/feed", **arguments)
+    with pytest.raises(ValueError, match="compression ratio"):
+        fetch_feed("https://example.com/feed", max_compression_ratio=10, **arguments)

@@ -6,6 +6,7 @@ import { AppShell } from "@/app/app-shell"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { IntelligenceFeedPage } from "@/features/feed/intelligence-feed-page"
+import { AuthGate } from "@/features/auth/auth-context"
 import { SourcesPage } from "@/features/sources/sources-page"
 
 const EventsPage = lazy(() =>
@@ -43,6 +44,11 @@ const OperationsPage = lazy(() =>
     default: module.OperationsPage,
   }))
 )
+const SecurityPage = lazy(() =>
+  import("@/features/security/security-page").then((module) => ({
+    default: module.SecurityPage,
+  }))
+)
 
 function PageFallback() {
   return (
@@ -65,71 +71,81 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route element={<AppShell />}>
-              <Route index element={<Navigate replace to="/feed" />} />
-              <Route path="/feed" element={<IntelligenceFeedPage />} />
-              <Route path="/sources" element={<SourcesPage />} />
-              <Route
-                path="/reviews"
-                element={
-                  <Suspense fallback={<PageFallback />}>
-                    <ReviewsPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/events"
-                element={
-                  <Suspense fallback={<PageFallback />}>
-                    <EventsPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/actors"
-                element={
-                  <Suspense fallback={<PageFallback />}>
-                    <ActorsPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/hunt"
-                element={
-                  <Suspense fallback={<PageFallback />}>
-                    <HuntPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/campaigns"
-                element={
-                  <Suspense fallback={<PageFallback />}>
-                    <CampaignsPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/watch-rules"
-                element={
-                  <Suspense fallback={<PageFallback />}>
-                    <WatchRulesPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/operations"
-                element={
-                  <Suspense fallback={<PageFallback />}>
-                    <OperationsPage />
-                  </Suspense>
-                }
-              />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+        <AuthGate>
+          <BrowserRouter>
+            <Routes>
+              <Route element={<AppShell />}>
+                <Route index element={<Navigate replace to="/feed" />} />
+                <Route path="/feed" element={<IntelligenceFeedPage />} />
+                <Route path="/sources" element={<SourcesPage />} />
+                <Route
+                  path="/reviews"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <ReviewsPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/events"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <EventsPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/actors"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <ActorsPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/hunt"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <HuntPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/campaigns"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <CampaignsPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/watch-rules"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <WatchRulesPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/operations"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <OperationsPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/security"
+                  element={
+                    <Suspense fallback={<PageFallback />}>
+                      <SecurityPage />
+                    </Suspense>
+                  }
+                />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </AuthGate>
         <Toaster position="top-right" richColors />
       </TooltipProvider>
     </QueryClientProvider>

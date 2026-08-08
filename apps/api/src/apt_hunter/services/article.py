@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 import httpx
 import trafilatura
 
-from apt_hunter.services.rss import validate_public_feed_url
+from apt_hunter.services.rss import validate_connected_peer, validate_public_feed_url
 
 _WHITESPACE = re.compile(r"[ \t\f\v]+")
 _PARAGRAPH_BREAKS = re.compile(r"\n{3,}")
@@ -31,6 +31,7 @@ def fetch_article(
     timeout_seconds: float,
     user_agent: str,
     max_bytes: int,
+    max_compression_ratio: int = 100,
 ) -> ArticleDocument:
     headers = {
         "Accept": "text/html, application/xhtml+xml, text/plain;q=0.8",
@@ -53,6 +54,7 @@ def fetch_article(
                     continue
 
                 response.raise_for_status()
+                validate_connected_peer(response)
                 content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
                 if content_type not in _SUPPORTED_CONTENT_TYPES:
                     raise ValueError(
@@ -68,6 +70,13 @@ def fetch_article(
                     if total > max_bytes:
                         raise ValueError("Article exceeds the configured size limit")
                     chunks.append(chunk)
+                if response.headers.get("content-encoding") and declared_length:
+                    try:
+                        compressed_bytes = max(int(declared_length), 1)
+                    except ValueError as exc:
+                        raise ValueError("Article returned an invalid content length") from exc
+                    if total / compressed_bytes > max_compression_ratio:
+                        raise ValueError("Article exceeded the compression ratio limit")
                 payload = b"".join(chunks)
                 encoding = response.charset_encoding or "utf-8"
                 break

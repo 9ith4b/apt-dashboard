@@ -58,6 +58,12 @@ _ATTACK_TERMS = {
     "漏洞利用",
     "网络钓鱼",
 }
+_SUPPORTED_FEED_TYPES = {
+    "application/atom+xml",
+    "application/rss+xml",
+    "application/xml",
+    "text/xml",
+}
 
 
 class _TextExtractor(HTMLParser):
@@ -177,6 +183,16 @@ def validate_public_feed_url(value: str) -> None:
         raise ValueError("RSS feed URL must resolve only to public IP addresses")
 
 
+def validate_connected_peer(response: httpx.Response) -> None:
+    stream = response.extensions.get("network_stream")
+    if stream is None or not hasattr(stream, "get_extra_info"):
+        return
+    peer = stream.get_extra_info("server_addr") or stream.get_extra_info("peername")
+    address = peer[0] if isinstance(peer, tuple) and peer else peer
+    if isinstance(address, str) and not ipaddress.ip_address(address).is_global:
+        raise ValueError("Connected peer is not a public IP address")
+
+
 def fetch_feed(
     url: str,
     *,
@@ -184,6 +200,8 @@ def fetch_feed(
     last_modified: str | None,
     timeout_seconds: float,
     user_agent: str,
+    max_bytes: int = 2_097_152,
+    max_compression_ratio: int = 100,
 ) -> FeedFetchResult:
     headers = {"Accept": "application/atom+xml, application/rss+xml, application/xml, text/xml"}
     headers["User-Agent"] = user_agent
@@ -213,8 +231,23 @@ def fetch_feed(
             not_modified=True,
         )
     response.raise_for_status()
+    validate_connected_peer(response)
+    content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
+    if content_type and content_type not in _SUPPORTED_FEED_TYPES:
+        raise ValueError(f"Unsupported feed content type: {content_type}")
+    payload = response.content
+    if len(payload) > max_bytes:
+        raise ValueError("RSS feed exceeds the configured size limit")
+    declared_length = response.headers.get("content-length")
+    if response.headers.get("content-encoding") and declared_length:
+        try:
+            compressed_bytes = max(int(declared_length), 1)
+        except ValueError as exc:
+            raise ValueError("RSS feed returned an invalid content length") from exc
+        if len(payload) / compressed_bytes > max_compression_ratio:
+            raise ValueError("RSS feed exceeded the compression ratio limit")
     return FeedFetchResult(
-        items=parse_rss_document(response.content),
+        items=parse_rss_document(payload),
         etag=response.headers.get("etag"),
         last_modified=response.headers.get("last-modified"),
     )

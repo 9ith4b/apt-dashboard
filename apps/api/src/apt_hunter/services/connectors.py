@@ -67,6 +67,8 @@ def _rss_page(source: Source, settings: Settings) -> ConnectorPage:
         last_modified=source.last_modified,
         timeout_seconds=settings.rss_timeout_seconds,
         user_agent=settings.rss_user_agent,
+        max_bytes=settings.rss_max_bytes,
+        max_compression_ratio=settings.max_compression_ratio,
     )
     return ConnectorPage(
         items=result.items,
@@ -84,6 +86,7 @@ def _web_page(source: Source, settings: Settings) -> ConnectorPage:
         timeout_seconds=settings.article_timeout_seconds,
         user_agent=settings.rss_user_agent,
         max_bytes=settings.article_max_bytes,
+        max_compression_ratio=settings.max_compression_ratio,
     )
     title = next((line.strip() for line in document.text.splitlines() if line.strip()), source.name)
     return ConnectorPage(

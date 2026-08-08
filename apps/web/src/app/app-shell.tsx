@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sidebar"
 import { GlobalSearch } from "@/features/system/global-search"
 import { NotificationCenter } from "@/features/system/notification-center"
+import { useAuth } from "@/features/auth/auth-context"
 
 const routeTitles: Record<string, string> = {
   "/feed": "情报流",
@@ -22,10 +23,12 @@ const routeTitles: Record<string, string> = {
   "/sources": "数据源",
   "/reviews": "待审核",
   "/operations": "作业中心",
+  "/security": "身份与审计",
 }
 
 export function AppShell() {
   const location = useLocation()
+  const auth = useAuth()
   const title = routeTitles[location.pathname] ?? "APT Hunter"
 
   return (
@@ -56,9 +59,14 @@ export function AppShell() {
             >
               <BookOpenIcon />
             </Button>
-            <Button className="hidden lg:inline-flex" variant="ghost">
+            <Button
+              aria-label={`账户 ${auth.user.display_name}，点击退出`}
+              title={`${auth.user.role} · 点击退出`}
+              variant="ghost"
+              onClick={() => void auth.logout()}
+            >
               <CircleUserRoundIcon data-icon="inline-start" />
-              分析师
+              <span className="hidden lg:inline">{auth.user.display_name}</span>
             </Button>
             <Button>开始研判</Button>
           </div>

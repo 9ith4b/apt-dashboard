@@ -1,6 +1,7 @@
 from apt_hunter.models.intelligence import (
     AnalysisRevision,
     AttackTechnique,
+    AuditLog,
     Campaign,
     CampaignEvent,
     EventActor,
@@ -23,12 +24,15 @@ from apt_hunter.models.intelligence import (
     ThreatActor,
     ThreatActorAlias,
     ThreatEvent,
+    User,
+    UserSession,
     WatchRule,
     WatchRuleHit,
 )
 
 __all__ = [
     "AnalysisRevision",
+    "AuditLog",
     "AttackTechnique",
     "Campaign",
     "CampaignEvent",
@@ -52,6 +56,8 @@ __all__ = [
     "ThreatActor",
     "ThreatActorAlias",
     "ThreatEvent",
+    "User",
+    "UserSession",
     "WatchRule",
     "WatchRuleHit",
 ]

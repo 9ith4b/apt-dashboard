@@ -9,9 +9,12 @@ import {
   ListTodoIcon,
   RadarIcon,
   SendIcon,
+  ShieldCheckIcon,
   ShieldUserIcon,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
+
+import { useAuth } from "@/features/auth/auth-context"
 
 import {
   Sidebar,
@@ -36,10 +39,17 @@ const navigation = [
   { title: "数据源", url: "/sources", icon: DatabaseIcon },
   { title: "待审核", url: "/reviews", icon: FileCheck2Icon },
   { title: "作业中心", url: "/operations", icon: ListTodoIcon },
+  {
+    title: "身份与审计",
+    url: "/security",
+    icon: ShieldCheckIcon,
+    adminOnly: true,
+  },
 ] as const
 
 export function AppSidebar() {
   const location = useLocation()
+  const auth = useAuth()
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
@@ -57,24 +67,26 @@ export function AppSidebar() {
         <SidebarGroup className="px-2 py-4">
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
-              {navigation.map((item) => {
-                const isActive = location.pathname.startsWith(item.url)
-                return (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      size="lg"
-                      tooltip={item.title}
-                    >
-                      <NavLink to={item.url}>
-                        <item.icon aria-hidden="true" />
-                        <span>{item.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
+              {navigation
+                .filter((item) => !("adminOnly" in item) || auth.canAdmin)
+                .map((item) => {
+                  const isActive = location.pathname.startsWith(item.url)
+                  return (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        size="lg"
+                        tooltip={item.title}
+                      >
+                        <NavLink to={item.url}>
+                          <item.icon aria-hidden="true" />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -12,6 +12,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -615,3 +616,65 @@ class OperationJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("operation_jobs.id", ondelete="SET NULL")
     )
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+
+class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('viewer', 'analyst', 'admin')",
+            name="user_role_value",
+        ),
+        UniqueConstraint("username", name="uq_users_username"),
+        Index("ix_users_role_enabled", "role", "enabled"),
+    )
+
+    username: Mapped[str] = mapped_column(String(100), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    role: Mapped[str] = mapped_column(String(32), default="viewer", nullable=False)
+    enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
+    failed_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class UserSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "user_sessions"
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_user_sessions_token_hash"),
+        Index("ix_user_sessions_user_expires", "user_id", "expires_at"),
+        Index("ix_user_sessions_expires_revoked", "expires_at", "revoked_at"),
+    )
+
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    csrf_token: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ip_address: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_agent: Mapped[str] = mapped_column(String(500), default="", nullable=False)
+
+
+class AuditLog(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "audit_logs"
+    __table_args__ = (
+        Index("ix_audit_logs_created_at", "created_at"),
+        Index("ix_audit_logs_actor_created", "actor_user_id", "created_at"),
+        Index("ix_audit_logs_action_result", "action", "result"),
+    )
+
+    actor_user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    action: Mapped[str] = mapped_column(String(100), nullable=False)
+    object_type: Mapped[str | None] = mapped_column(String(100))
+    object_id: Mapped[str | None] = mapped_column(String(100))
+    result: Mapped[str] = mapped_column(String(32), nullable=False)
+    request_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    ip_address: Mapped[str] = mapped_column(String(64), nullable=False)
+    details: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
