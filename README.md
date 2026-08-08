@@ -8,9 +8,11 @@ APT Hunter 是一个独立建设的 APT 威胁情报采集、分析、审核、�
 
 - 高保真产品原型：[`outputs/apt-hunter-prototype`](./outputs/apt-hunter-prototype)
 - 产品与工程设计：[`outputs/apt-hunter-engineering-docs`](./outputs/apt-hunter-engineering-docs)
-- 工程状态：进入 M0 工程基座阶段
+- 工程状态：M2 正文富化与人工复核纵向切片已上线
 
-M0 已建立前端应用外壳、情报流纵向切片、API 健康检查、核心数据库表、首个迁移、异步 Worker、Compose 和 CI。
+当前已完成工程基座、RSS 数据源管理、定时采集、去重与 APT 相关性筛选；候选文章会自动抓取正文，按照攻击钻石模型提取对手、能力、基础设施和受害者，并进入带原文证据的人工复核队列。
+
+部署环境访问地址：`http://server.example.com:8180`。
 
 ## 技术基线
 
@@ -28,7 +30,7 @@ infra/          本地开发和部署编排
 outputs/        原型与工程设计文档
 ```
 
-详细需求、接口、数据模型和开发里程碑请从[工程文档索引](./outputs/apt-hunter-engineering-docs/README.md)开始阅读。
+详细需求、接口、数据模型和开发里程碑请从[工程文档索引](./outputs/apt-hunter-engineering-docs/README.md)开始阅读；当前实现状态见 [M2 状态说明](./docs/m2-status.md)。
 
 ## 开发命令
 

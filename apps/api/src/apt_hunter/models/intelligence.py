@@ -72,6 +72,58 @@ class Report(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class ReportAnalysis(TimestampMixin, Base):
+    __tablename__ = "report_analyses"
+    __table_args__ = (
+        CheckConstraint(
+            "extraction_status IN ('queued', 'processing', 'ready', 'failed')",
+            name="report_analysis_extraction_status",
+        ),
+        CheckConstraint(
+            "review_status IN ('pending', 'approved', 'rejected')",
+            name="report_analysis_review_status",
+        ),
+        CheckConstraint(
+            "confidence_auto IS NULL OR confidence_auto BETWEEN 0 AND 100",
+            name="report_analysis_confidence_range",
+        ),
+        CheckConstraint("version >= 1", name="report_analysis_version_positive"),
+        Index("ix_report_analyses_review_updated", "review_status", "updated_at"),
+        Index(
+            "ix_report_analyses_pending_review",
+            "updated_at",
+            postgresql_where=text("review_status = 'pending'"),
+        ),
+    )
+
+    report_id: Mapped[UUID] = mapped_column(
+        ForeignKey("reports.id", ondelete="CASCADE"), primary_key=True
+    )
+    extraction_status: Mapped[str] = mapped_column(String(32), default="queued", nullable=False)
+    review_status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
+    content_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    content_hash: Mapped[str | None] = mapped_column(String(64))
+    final_url: Mapped[str | None] = mapped_column(Text)
+    content_type: Mapped[str | None] = mapped_column(String(100))
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    extraction_error: Mapped[str | None] = mapped_column(Text)
+    actors: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list, nullable=False)
+    capabilities: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON, default=list, nullable=False
+    )
+    infrastructure: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON, default=list, nullable=False
+    )
+    victims: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list, nullable=False)
+    evidence: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list, nullable=False)
+    confidence_auto: Mapped[int | None] = mapped_column(Integer)
+    method_version: Mapped[str] = mapped_column(String(32), default="rules-v1", nullable=False)
+    analyst_note: Mapped[str | None] = mapped_column(Text)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reviewed_by: Mapped[str | None] = mapped_column(String(100))
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+
 class ThreatEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "threat_events"
     __table_args__ = (Index("ix_threat_events_status_first_seen", "status", "first_seen"),)

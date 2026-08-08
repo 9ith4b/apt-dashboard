@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     rss_timeout_seconds: float = 20.0
     rss_relevance_threshold: int = 50
     rss_scheduler_batch_size: int = 20
+    article_timeout_seconds: float = 30.0
+    article_max_bytes: int = 5_242_880
+    enrichment_scheduler_batch_size: int = 10
 
 
 @lru_cache
