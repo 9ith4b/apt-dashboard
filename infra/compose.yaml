@@ -1,5 +1,10 @@
 name: apt-hunter
 
+x-api-image: &api-image
+  image: ${APT_HUNTER_API_IMAGE:-apt-hunter-api}:${APT_HUNTER_IMAGE_TAG:-dev}
+  build:
+    context: ../apps/api
+
 services:
   postgres:
     image: postgres:18.3-alpine
@@ -46,8 +51,7 @@ services:
     networks: [backend]
 
   migrate:
-    build:
-      context: ../apps/api
+    <<: *api-image
     command: ["alembic", "upgrade", "head"]
     environment: &api-environment
       APT_HUNTER_ENVIRONMENT: production
@@ -69,8 +73,7 @@ services:
     restart: "no"
 
   api:
-    build:
-      context: ../apps/api
+    <<: *api-image
     environment: *api-environment
     depends_on:
       migrate:
@@ -87,8 +90,7 @@ services:
     networks: [backend]
 
   worker:
-    build:
-      context: ../apps/api
+    <<: *api-image
     command: ["celery", "-A", "apt_hunter.worker.celery_app:celery_app", "worker", "--loglevel=INFO", "--concurrency=${WORKER_CONCURRENCY:-1}"]
     environment: *api-environment
     depends_on:
@@ -99,8 +101,7 @@ services:
     networks: [backend]
 
   beat:
-    build:
-      context: ../apps/api
+    <<: *api-image
     command: ["celery", "-A", "apt_hunter.worker.celery_app:celery_app", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
     environment: *api-environment
     depends_on:
@@ -109,11 +110,29 @@ services:
     networks: [backend]
 
   web:
+    image: ${APT_HUNTER_WEB_IMAGE:-apt-hunter-web}:${APT_HUNTER_IMAGE_TAG:-dev}
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
     ports:
       - "${WEB_PORT:-8180}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [backend]
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
     depends_on:
       api:
         condition: service_healthy
@@ -126,3 +145,4 @@ volumes:
   postgres-data:
   redis-data:
   minio-data:
+  prometheus-data:

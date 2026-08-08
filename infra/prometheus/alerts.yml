@@ -1,0 +1,38 @@
+groups:
+  - name: apt-hunter
+    rules:
+      - alert: AptHunterApiDown
+        expr: up{job="apt-hunter-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: APT Hunter API metrics target is down
+      - alert: AptHunterDependencyDown
+        expr: apt_hunter_dependency_up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: APT Hunter dependency is unavailable
+      - alert: AptHunterQueueBacklog
+        expr: apt_hunter_celery_queue_depth > 100
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: APT Hunter Celery queue is backing up
+      - alert: AptHunterFailedJobs
+        expr: apt_hunter_operation_jobs{status="failed"} > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: APT Hunter has persisted failed jobs
+      - alert: AptHunterSourceFailures
+        expr: apt_hunter_source_consecutive_failures >= 3
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: One or more APT Hunter sources are repeatedly failing

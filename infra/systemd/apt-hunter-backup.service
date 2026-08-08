@@ -1,0 +1,13 @@
+[Unit]
+Description=APT Hunter PostgreSQL backup
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/apt-hunter/infra
+ExecStart=%h/apt-hunter/infra/scripts/backup.sh
+Environment=BACKUP_DIR=%h/apt-hunter-backups
+Environment=RETENTION_DAYS=14
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

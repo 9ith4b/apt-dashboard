@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from apt_hunter.api.router import api_router
 from apt_hunter.config import get_settings
+from apt_hunter.metrics import MetricsMiddleware
+from apt_hunter.metrics import router as metrics_router
 from apt_hunter.security import SecurityMiddleware
 
 
@@ -15,6 +17,7 @@ def create_app() -> FastAPI:
         redoc_url=None,
     )
     app.add_middleware(SecurityMiddleware)
+    app.add_middleware(MetricsMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -28,6 +31,7 @@ def create_app() -> FastAPI:
         ],
     )
     app.include_router(api_router, prefix=settings.api_prefix)
+    app.include_router(metrics_router)
     return app
 
 
