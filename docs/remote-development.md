@@ -5,6 +5,7 @@
 - 主机：`server.example.com`
 - 用户：`apt-hunter`
 - 项目目录：`/opt/apt-hunter`
+- Git 裸仓库：`/srv/git/apt-hunter.git`
 - Web：`http://server.example.com:8180`
 - API 存活检查：`http://server.example.com:8180/api/v1/health/live`
 
@@ -15,6 +16,7 @@
 ```bash
 cd /opt/apt-hunter
 git status
+git push origin main
 
 cd infra
 docker compose ps
@@ -23,7 +25,9 @@ docker compose up -d --build
 docker compose down
 ```
 
-Node.js 安装在用户目录 `~/.local/node-v24`，登录 Shell 通过 `~/.profile` 将其加入 `PATH`。项目的 pnpm 版本由根目录 `package.json` 锁定。
+Node.js 24 安装在用户目录 `~/.local/node-v24`，登录 Shell 通过 `~/.profile` 将其加入 `PATH`。项目的 pnpm 版本由根目录 `package.json` 锁定。
+
+`uv` 安装在 `~/.local/bin`，并管理 Python 3.13。后端虚拟环境位于 `apps/api/.venv`，不替换 Ubuntu 自带的 Python。
 
 ## 环境隔离
 
