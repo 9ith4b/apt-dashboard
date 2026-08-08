@@ -41,7 +41,6 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { formatDateTime } from "@/features/intelligence/intelligence-format"
 import {
@@ -691,20 +690,30 @@ export function HuntPage() {
             </Button>
           </form>
         </div>
-        <Tabs
-          className="mt-4"
-          onValueChange={(value) => setMode(value as typeof mode)}
-          value={mode}
+        <div
+          aria-label="狩猎对象类型"
+          className="mt-4 flex w-fit rounded-lg bg-muted p-[3px]"
+          role="group"
         >
-          <TabsList>
-            <TabsTrigger value="observables">
-              Observable（{observables.length}）
-            </TabsTrigger>
-            <TabsTrigger value="indicators">
-              Indicator（{indicators.length}）
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+          <Button
+            aria-pressed={mode === "observables"}
+            size="sm"
+            type="button"
+            variant={mode === "observables" ? "secondary" : "ghost"}
+            onClick={() => setMode("observables")}
+          >
+            Observable（{observables.length}）
+          </Button>
+          <Button
+            aria-pressed={mode === "indicators"}
+            size="sm"
+            type="button"
+            variant={mode === "indicators" ? "secondary" : "ghost"}
+            onClick={() => setMode("indicators")}
+          >
+            Indicator（{indicators.length}）
+          </Button>
+        </div>
       </header>
 
       {mode === "indicators" ? (

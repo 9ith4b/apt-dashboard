@@ -1,4 +1,10 @@
-import { EyeIcon, EyeOffIcon, RadarIcon, ShieldCheckIcon } from "lucide-react"
+import {
+  EyeIcon,
+  EyeOffIcon,
+  LoaderCircleIcon,
+  RadarIcon,
+  ShieldCheckIcon,
+} from "lucide-react"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -6,8 +12,8 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import {
   Field,
@@ -15,7 +21,14 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+
+import { BlackHoleScene } from "./black-hole-scene"
 
 export function LoginPage({
   onLogin,
@@ -31,99 +44,121 @@ export function LoginPage({
   const [showPassword, setShowPassword] = useState(false)
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,var(--color-secondary),transparent_36%),linear-gradient(135deg,var(--color-background),var(--color-muted))] p-5">
-      <div className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] [background-size:38px_38px] opacity-30" />
-      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border bg-card shadow-2xl lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="hidden flex-col justify-between bg-primary p-10 text-primary-foreground lg:flex">
-          <div className="flex items-center gap-3 text-xl font-semibold">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-primary-foreground/10">
-              <RadarIcon aria-hidden="true" />
-            </span>
-            APT Hunter
-          </div>
-          <div className="max-w-md space-y-5">
-            <p className="text-sm font-medium tracking-[0.2em] text-primary-foreground/60 uppercase">
-              Threat Intelligence Workspace
-            </p>
-            <h1 className="text-4xl leading-tight font-semibold tracking-tight">
-              从公开信号到可追溯的攻击事件
+    <main className="login-shell relative min-h-dvh overflow-hidden bg-background text-foreground">
+      <BlackHoleScene />
+
+      <header className="absolute top-5 left-5 flex items-center gap-3 sm:top-7 sm:left-8 lg:top-9 lg:left-10">
+        <span className="login-brand-mark flex size-10 items-center justify-center rounded-full sm:size-11">
+          <RadarIcon aria-hidden="true" />
+        </span>
+        <span className="text-lg font-semibold tracking-tight sm:text-xl">
+          APT Hunter
+        </span>
+      </header>
+
+      <a
+        className="login-attribution"
+        href="https://sketchfab.com/3d-models/black-hole-e410da98b1e5445eae2acafaaa53587d"
+        rel="nofollow noreferrer"
+        target="_blank"
+      >
+        Black Hole by Nestaeric · Sketchfab
+      </a>
+
+      <div className="relative grid min-h-dvh items-end px-4 pt-28 pb-4 sm:px-6 sm:pt-32 sm:pb-6 lg:grid-cols-[minmax(0,1fr)_minmax(26rem,34rem)] lg:items-center lg:px-10 lg:py-10 xl:px-16">
+        <div aria-hidden="true" className="hidden lg:block" />
+
+        <Card className="login-panel mx-auto w-full max-w-[32rem] lg:mx-0 lg:justify-self-end">
+          <CardHeader className="gap-3 px-6 pt-7 sm:px-8 sm:pt-8">
+            <h1 className="login-title text-3xl leading-tight font-semibold tracking-[-0.035em] text-balance sm:text-4xl lg:text-5xl">
+              洞察威胁轨迹
             </h1>
-            <p className="leading-7 text-primary-foreground/70">
-              聚合安全报道与官方社交来源，以钻石模型组织证据，并持续跟踪 APT
-              组织变化。
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-primary-foreground/65">
-            <ShieldCheckIcon className="size-4" />
-            HttpOnly 会话 · CSRF 防护 · 操作审计
-          </div>
-        </section>
-        <section className="flex min-h-[34rem] items-center justify-center p-6 sm:p-10">
-          <Card className="w-full max-w-sm border-0 bg-transparent shadow-none">
-            <CardHeader className="px-0">
-              <CardTitle className="text-2xl">登录工作台</CardTitle>
-              <CardDescription>
-                使用由系统管理员创建的本地账户继续。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-0">
-              <form
-                className="space-y-5"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  onLogin(username.trim(), password)
-                }}
-              >
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor="login-username">用户名</FieldLabel>
-                    <Input
+            <CardDescription className="max-w-md text-sm leading-6 sm:text-base sm:leading-7">
+              汇聚公开信号，沉淀可追溯的攻击情报。
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="flex flex-col gap-5 px-6 sm:px-8">
+            <h2 className="text-xl font-medium tracking-tight sm:text-2xl">
+              登录工作台
+            </h2>
+            <form
+              className="flex flex-col gap-5"
+              onSubmit={(event) => {
+                event.preventDefault()
+                onLogin(username.trim(), password)
+              }}
+            >
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="login-username">用户名</FieldLabel>
+                  <InputGroup className="h-12">
+                    <InputGroupInput
                       id="login-username"
                       autoComplete="username"
                       autoFocus
+                      placeholder="用户名"
                       value={username}
                       onChange={(event) => setUsername(event.target.value)}
                     />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="login-password">密码</FieldLabel>
-                    <div className="relative">
-                      <Input
-                        className="pr-10"
-                        id="login-password"
-                        autoComplete="current-password"
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                      />
-                      <Button
+                  </InputGroup>
+                </Field>
+
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="login-password">密码</FieldLabel>
+                  <InputGroup className="h-12">
+                    <InputGroupInput
+                      id="login-password"
+                      aria-invalid={Boolean(error)}
+                      autoComplete="current-password"
+                      placeholder="密码"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                    />
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupButton
                         aria-label={showPassword ? "隐藏密码" : "显示密码"}
-                        className="absolute top-1/2 right-1 -translate-y-1/2"
                         size="icon-sm"
-                        type="button"
-                        variant="ghost"
                         onClick={() => setShowPassword((value) => !value)}
                       >
                         {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                      </Button>
-                    </div>
-                    <FieldError>{error}</FieldError>
-                  </Field>
-                </FieldGroup>
-                <Button
-                  className="w-full"
-                  disabled={
-                    pending || username.trim().length < 2 || password.length < 8
-                  }
-                  size="lg"
-                  type="submit"
-                >
-                  {pending ? "正在验证…" : "安全登录"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </section>
+                      </InputGroupButton>
+                    </InputGroupAddon>
+                  </InputGroup>
+                  <FieldError>{error}</FieldError>
+                </Field>
+              </FieldGroup>
+
+              <Button
+                className="h-12 w-full text-primary-foreground!"
+                disabled={
+                  pending || username.trim().length < 2 || password.length < 8
+                }
+                size="lg"
+                type="submit"
+              >
+                {pending ? (
+                  <>
+                    <LoaderCircleIcon
+                      aria-hidden="true"
+                      className="animate-spin"
+                      data-icon="inline-start"
+                    />
+                    正在验证…
+                  </>
+                ) : (
+                  "安全登录"
+                )}
+              </Button>
+            </form>
+          </CardContent>
+
+          <CardFooter className="justify-center gap-2 px-6 py-4 text-xs text-muted-foreground sm:text-sm">
+            <ShieldCheckIcon aria-hidden="true" className="size-4" />
+            安全会话 · 全程审计
+          </CardFooter>
+        </Card>
       </div>
     </main>
   )

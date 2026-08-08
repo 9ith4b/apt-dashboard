@@ -74,6 +74,7 @@ export function App() {
         <BrowserRouter>
           <AuthGate>
             <Routes>
+              <Route path="/login" element={<Navigate replace to="/feed" />} />
               <Route element={<AppShell />}>
                 <Route index element={<Navigate replace to="/feed" />} />
                 <Route path="/feed" element={<IntelligenceFeedPage />} />

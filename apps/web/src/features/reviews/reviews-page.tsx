@@ -38,7 +38,6 @@ import { FieldGroup } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import {
   decideReview,
@@ -359,7 +358,12 @@ function ReviewWorkbench({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="max-h-96 overflow-y-auto text-sm leading-7 whitespace-pre-line text-muted-foreground">
+              <p
+                aria-label="报告正文"
+                className="max-h-96 overflow-y-auto text-sm leading-7 whitespace-pre-line text-muted-foreground"
+                role="region"
+                tabIndex={0}
+              >
                 {analysis.content_text || "未保存正文。"}
               </p>
             </CardContent>
@@ -530,21 +534,28 @@ export function ReviewsPage() {
               核对正文证据后再沉淀为可信情报
             </p>
           </div>
-          <Tabs
-            value={reviewStatus}
-            onValueChange={(value) => {
-              setReviewStatus(value as keyof typeof REVIEW_LABELS)
-              setSelectedId(null)
-            }}
+          <div
+            aria-label="复核状态"
+            className="flex w-full rounded-lg bg-muted p-[3px]"
+            role="group"
           >
-            <TabsList className="w-full">
-              {Object.entries(REVIEW_LABELS).map(([value, label]) => (
-                <TabsTrigger className="flex-1" key={value} value={value}>
-                  {label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+            {Object.entries(REVIEW_LABELS).map(([value, label]) => (
+              <Button
+                aria-pressed={reviewStatus === value}
+                className="flex-1"
+                key={value}
+                size="sm"
+                type="button"
+                variant={reviewStatus === value ? "secondary" : "ghost"}
+                onClick={() => {
+                  setReviewStatus(value as keyof typeof REVIEW_LABELS)
+                  setSelectedId(null)
+                }}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
         </div>
         <Separator />
         <div className="max-h-72 min-h-0 overflow-y-auto lg:max-h-none lg:flex-1">

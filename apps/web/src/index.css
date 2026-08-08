@@ -42,6 +42,8 @@
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
+    --color-login-gold: var(--login-gold);
+    --color-login-violet: var(--login-violet);
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -88,6 +90,185 @@
     --sidebar-accent-foreground: oklch(0.95 0.01 278);
     --sidebar-border: oklch(0.25 0.02 255);
     --sidebar-ring: oklch(0.64 0.2 288);
+    --login-gold: oklch(0.9 0.08 78);
+    --login-violet: oklch(0.7 0.2 292);
+}
+
+@layer components {
+  .login-shell {
+    --background: oklch(0.09 0.025 274);
+    --foreground: oklch(0.97 0.012 82);
+    --card: oklch(0.14 0.026 273 / 82%);
+    --card-foreground: oklch(0.97 0.012 82);
+    --muted-foreground: oklch(0.72 0.02 274);
+    --primary: oklch(0.65 0.22 292);
+    --primary-foreground: oklch(0.985 0.006 292);
+    --border: oklch(0.41 0.035 280 / 68%);
+    --input: oklch(0.29 0.035 278 / 76%);
+    --ring: oklch(0.72 0.19 292);
+    isolation: isolate;
+    background:
+      radial-gradient(circle at 38% 44%, oklch(0.2 0.07 291 / 32%), transparent 32%),
+      radial-gradient(circle at 16% 18%, oklch(0.22 0.035 78 / 14%), transparent 28%),
+      oklch(0.09 0.025 274);
+  }
+
+  .login-shell::before {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(circle, oklch(0.9 0.05 80 / 70%) 0 0.7px, transparent 0.9px),
+      radial-gradient(circle, oklch(0.78 0.12 292 / 54%) 0 0.6px, transparent 0.8px);
+    background-position: 0 0, 41px 29px;
+    background-size: 97px 97px, 131px 131px;
+    content: "";
+    opacity: 0.34;
+    animation: login-star-drift 28s linear infinite;
+  }
+
+  .login-brand-mark {
+    color: var(--login-gold);
+    border: 1px solid oklch(0.78 0.08 78 / 58%);
+    background: oklch(0.14 0.02 274 / 52%);
+    box-shadow: inset 0 0 20px oklch(0.85 0.07 78 / 7%);
+    backdrop-filter: blur(12px);
+  }
+
+  .login-panel {
+    border: 1px solid oklch(0.62 0.04 283 / 58%);
+    background: var(--card);
+    box-shadow:
+      0 30px 90px oklch(0.02 0.01 274 / 74%),
+      inset 0 1px 0 oklch(1 0 0 / 5%);
+    backdrop-filter: blur(24px) saturate(116%);
+  }
+
+  .login-panel [data-slot="button"][data-variant="default"] {
+    color: var(--primary-foreground);
+    background-image: linear-gradient(112deg, var(--login-violet), var(--primary));
+    box-shadow: 0 12px 30px oklch(0.53 0.2 292 / 26%);
+  }
+
+  .login-title {
+    color: transparent;
+    background: linear-gradient(96deg, oklch(0.99 0.008 82), var(--login-gold));
+    background-clip: text;
+  }
+
+  .black-hole-scene {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .black-hole-scene::after {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, transparent 26%, oklch(0.06 0.02 274 / 8%) 50%, oklch(0.06 0.02 274 / 78%) 100%),
+      linear-gradient(180deg, oklch(0.04 0.01 274 / 12%), transparent 48%, oklch(0.04 0.01 274 / 48%));
+    content: "";
+  }
+
+  .black-hole-scene iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    filter: saturate(0.92) contrast(1.04) brightness(0.86);
+    opacity: 0;
+    transition: opacity 1000ms ease;
+  }
+
+  .black-hole-scene[data-state="ready"] iframe {
+    opacity: 0.92;
+  }
+
+  .black-hole-fallback {
+    position: absolute;
+    top: 11%;
+    left: 4%;
+    width: min(62vw, 52rem);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle, oklch(0.035 0.012 274) 0 29%, transparent 30%),
+      conic-gradient(from 118deg, transparent 0 22%, oklch(0.92 0.08 78 / 92%) 31%, oklch(0.68 0.18 292 / 74%) 40%, transparent 52% 76%, oklch(0.88 0.07 78 / 68%) 86%, transparent 96%);
+    filter: blur(1px) drop-shadow(0 0 34px oklch(0.78 0.1 78 / 34%));
+    opacity: 0.72;
+    transform: rotate(-12deg) scaleY(0.62);
+    transition: opacity 700ms ease;
+  }
+
+  .black-hole-scene[data-state="ready"] .black-hole-fallback {
+    opacity: 0;
+  }
+
+  .login-attribution {
+    position: absolute;
+    bottom: 1rem;
+    left: 2.5rem;
+    z-index: 10;
+    color: oklch(0.8 0.02 80 / 68%);
+    font-size: 0.6875rem;
+    letter-spacing: 0.02em;
+    transition: color 160ms ease;
+  }
+
+  .login-attribution:hover {
+    color: var(--login-gold);
+  }
+}
+
+@keyframes login-star-drift {
+  to {
+    background-position: 97px 97px, -90px 160px;
+  }
+}
+
+@media (max-width: 767px) {
+  .login-shell {
+    background:
+      radial-gradient(circle at 50% 25%, oklch(0.21 0.07 291 / 34%), transparent 31%),
+      oklch(0.09 0.025 274);
+  }
+
+  .black-hole-fallback {
+    top: 5%;
+    left: 8%;
+    width: 84vw;
+  }
+
+  .black-hole-scene iframe {
+    height: 48dvh;
+  }
+
+  .black-hole-scene::after {
+    background: linear-gradient(180deg, transparent 12%, oklch(0.06 0.02 274 / 18%) 34%, oklch(0.06 0.02 274) 58%);
+  }
+
+  .login-attribution {
+    top: 4.75rem;
+    bottom: auto;
+    left: 1.25rem;
+  }
+
+  .login-panel {
+    max-height: calc(100dvh - 7.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-shell::before {
+    animation: none;
+  }
+
+  .black-hole-scene iframe,
+  .black-hole-fallback {
+    transition: none;
+  }
 }
 
 .dark {

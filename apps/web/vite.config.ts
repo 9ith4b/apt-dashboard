@@ -5,6 +5,22 @@ import { defineConfig } from "vitest/config"
 
 // https://vite.dev/config/
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes("/node_modules/radix-ui/") ||
+            id.includes("/node_modules/@radix-ui/") ||
+            id.includes("\\node_modules\\radix-ui\\") ||
+            id.includes("\\node_modules\\@radix-ui\\")
+          ) {
+            return "ui-runtime"
+          }
+        },
+      },
+    },
+  },
   plugins: [react(), tailwindcss()],
   test: {
     environment: "jsdom",
