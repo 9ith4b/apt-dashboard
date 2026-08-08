@@ -10,6 +10,8 @@ APT Hunter 是一个独立建设的 APT 威胁情报采集、分析、审核、�
 - 产品与工程设计：[`outputs/apt-hunter-engineering-docs`](./outputs/apt-hunter-engineering-docs)
 - 工程状态：进入 M0 工程基座阶段
 
+M0 已建立前端应用外壳、情报流纵向切片、API 健康检查、核心数据库表、首个迁移、异步 Worker、Compose 和 CI。
+
 ## 技术基线
 
 - Web：React、TypeScript、Vite、Tailwind CSS、shadcn/ui
@@ -27,3 +29,37 @@ outputs/        原型与工程设计文档
 ```
 
 详细需求、接口、数据模型和开发里程碑请从[工程文档索引](./outputs/apt-hunter-engineering-docs/README.md)开始阅读。
+
+## 开发命令
+
+### Web
+
+```powershell
+pnpm install
+pnpm dev:web
+pnpm lint:web
+pnpm typecheck:web
+pnpm test:web
+pnpm build:web
+```
+
+### API
+
+```powershell
+cd apps/api
+python -m venv .venv
+.\.venv\Scripts\python -m pip install -e ".[dev]"
+.\.venv\Scripts\ruff check .
+.\.venv\Scripts\pytest
+.\.venv\Scripts\uvicorn apt_hunter.main:app --reload
+```
+
+### 完整环境
+
+```powershell
+Copy-Item infra/.env.example infra/.env
+cd infra
+docker compose up --build
+```
+
+打开 `http://localhost:8080`。本机仅开发 Web 时使用 `http://localhost:5173`。
