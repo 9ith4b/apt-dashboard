@@ -174,3 +174,48 @@ class EventReport(TimestampMixin, Base):
         ForeignKey("reports.id", ondelete="CASCADE"), primary_key=True
     )
     evidence_role: Mapped[str] = mapped_column(String(32), default="supporting", nullable=False)
+
+
+class ThreatActor(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "threat_actors"
+    __table_args__ = (
+        UniqueConstraint("canonical_key", name="uq_threat_actors_canonical_key"),
+        Index("ix_threat_actors_canonical_name", "canonical_name"),
+    )
+
+    canonical_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    canonical_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    origin_country: Mapped[str | None] = mapped_column(String(100))
+    description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+
+
+class ThreatActorAlias(TimestampMixin, Base):
+    __tablename__ = "threat_actor_aliases"
+    __table_args__ = (Index("ix_threat_actor_aliases_actor_id", "actor_id"),)
+
+    alias_key: Mapped[str] = mapped_column(String(200), primary_key=True)
+    actor_id: Mapped[UUID] = mapped_column(
+        ForeignKey("threat_actors.id", ondelete="CASCADE"), nullable=False
+    )
+    alias: Mapped[str] = mapped_column(String(200), nullable=False)
+
+
+class EventActor(TimestampMixin, Base):
+    __tablename__ = "event_actors"
+    __table_args__ = (
+        CheckConstraint(
+            "confidence BETWEEN 0 AND 100",
+            name="event_actor_confidence_range",
+        ),
+        Index("ix_event_actors_actor_event", "actor_id", "event_id"),
+    )
+
+    event_id: Mapped[UUID] = mapped_column(
+        ForeignKey("threat_events.id", ondelete="CASCADE"), primary_key=True
+    )
+    actor_id: Mapped[UUID] = mapped_column(
+        ForeignKey("threat_actors.id", ondelete="CASCADE"), primary_key=True
+    )
+    reported_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    confidence: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, default="", nullable=False)

@@ -14,6 +14,11 @@ const EventsPage = lazy(() =>
     default: module.EventsPage,
   }))
 )
+const ActorsPage = lazy(() =>
+  import("@/features/actors/actors-page").then((module) => ({
+    default: module.ActorsPage,
+  }))
+)
 const ReviewsPage = lazy(() =>
   import("@/features/reviews/reviews-page").then((module) => ({
     default: module.ReviewsPage,
@@ -38,7 +43,6 @@ const queryClient = new QueryClient({
 })
 
 const placeholderRoutes = [
-  ["/actors", "攻击者", "攻击组织画像将在实体规范化完成后接入。"],
   ["/campaigns", "Campaign", "Campaign 时间线将在事件聚类能力完成后接入。"],
   ["/hunt", "IOC 狩猎", "Observable 检索与富化将在 M3 阶段接入。"],
   ["/watch-rules", "关注规则", "关注条件和命中预览将在 M4 阶段接入。"],
@@ -67,6 +71,14 @@ export function App() {
                 element={
                   <Suspense fallback={<PageFallback />}>
                     <EventsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/actors"
+                element={
+                  <Suspense fallback={<PageFallback />}>
+                    <ActorsPage />
                   </Suspense>
                 }
               />

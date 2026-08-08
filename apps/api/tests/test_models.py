@@ -5,9 +5,12 @@ from apt_hunter.db.base import Base
 def test_initial_metadata_contains_intelligence_tables() -> None:
     assert set(Base.metadata.tables) == {
         "analysis_revisions",
+        "event_actors",
         "sources",
         "reports",
         "report_analyses",
+        "threat_actor_aliases",
+        "threat_actors",
         "threat_events",
         "event_reports",
     }

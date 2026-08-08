@@ -95,3 +95,36 @@ export type ThreatEventDetail = ThreatEventSummary & {
   }
   reports: ReportSummary[]
 }
+
+export type ThreatActorSummary = {
+  id: string
+  canonical_name: string
+  aliases: string[]
+  origin_country: string | null
+  event_count: number
+  first_seen: string | null
+  last_seen: string | null
+  latest_event_id: string | null
+  latest_event_title: string | null
+}
+
+export type ActorEvent = {
+  id: string
+  title: string
+  summary: string
+  status: string
+  confidence: number | null
+  first_seen: string | null
+  last_seen: string | null
+  reported_name: string
+}
+
+export type ThreatActorDetail = ThreatActorSummary & {
+  description: string
+  events: ActorEvent[]
+  timeline: Array<{
+    key: string
+    label: string
+    event_count: number
+  }>
+}

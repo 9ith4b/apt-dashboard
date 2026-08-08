@@ -7,11 +7,14 @@ import type {
   ReviewDecision,
   ThreatEventDetail,
   ThreatEventSummary,
+  ThreatActorDetail,
+  ThreatActorSummary,
 } from "./intelligence-types"
 
 export const reportQueryKey = ["reports"] as const
 export const reviewQueueKey = ["reviews"] as const
 export const eventQueryKey = ["events"] as const
+export const actorQueryKey = ["actors"] as const
 
 export function listReports() {
   return apiRequest<ReportSummary[]>("/reports?limit=200")
@@ -46,4 +49,42 @@ export function listThreatEvents() {
 
 export function getThreatEvent(eventId: string) {
   return apiRequest<ThreatEventDetail>(`/events/${eventId}`)
+}
+
+function actorQuery(
+  path: string,
+  filters: {
+    dateFrom?: string
+    dateTo?: string
+    granularity?: "month" | "year"
+  }
+) {
+  const params = new URLSearchParams()
+  if (filters.dateFrom) params.set("date_from", filters.dateFrom)
+  if (filters.dateTo) params.set("date_to", filters.dateTo)
+  if (filters.granularity) params.set("granularity", filters.granularity)
+  const query = params.toString()
+  return `${path}${query ? `?${query}` : ""}`
+}
+
+export function listThreatActors(filters: {
+  dateFrom?: string
+  dateTo?: string
+}) {
+  const path = actorQuery("/actors", filters)
+  const separator = path.includes("?") ? "&" : "?"
+  return apiRequest<ThreatActorSummary[]>(`${path}${separator}limit=200`)
+}
+
+export function getThreatActor(
+  actorId: string,
+  filters: {
+    dateFrom?: string
+    dateTo?: string
+    granularity: "month" | "year"
+  }
+) {
+  return apiRequest<ThreatActorDetail>(
+    actorQuery(`/actors/${actorId}`, filters)
+  )
 }

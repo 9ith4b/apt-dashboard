@@ -119,6 +119,7 @@ def test_review_decision_is_versioned(review_client: tuple[TestClient, str]) -> 
     stale = client.post(f"/api/v1/reviews/{report_id}/decision", json=payload)
     events = client.get("/api/v1/events")
     revisions = client.get(f"/api/v1/reviews/{report_id}/revisions")
+    actors = client.get("/api/v1/actors")
 
     assert approved.status_code == 200
     assert approved.json()["status"] == "approved"
@@ -136,6 +137,16 @@ def test_review_decision_is_versioned(review_client: tuple[TestClient, str]) -> 
     assert revisions.status_code == 200
     assert revisions.json()[0]["review_version"] == 2
     assert revisions.json()[0]["snapshot"]["infrastructure"] == []
+    assert actors.status_code == 200
+    assert actors.json()[0]["canonical_name"] == "Midnight Blizzard"
+    assert "APT29" in actors.json()[0]["aliases"]
+    assert actors.json()[0]["event_count"] == 1
+    actor_id = actors.json()[0]["id"]
+    actor = client.get(f"/api/v1/actors/{actor_id}?granularity=year")
+    assert actor.status_code == 200
+    assert actor.json()["events"][0]["id"] == event_id
+    assert actor.json()["timeline"][0]["event_count"] == 1
+    assert client.get("/api/v1/actors?date_from=2099-01-01").json() == []
 
 
 def test_rejected_review_does_not_create_event(review_client: tuple[TestClient, str]) -> None:
@@ -157,3 +168,4 @@ def test_rejected_review_does_not_create_event(review_client: tuple[TestClient, 
     assert rejected.status_code == 200
     assert rejected.json()["analysis"]["reviewed_actors"] == []
     assert client.get("/api/v1/events").json() == []
+    assert client.get("/api/v1/actors").json() == []

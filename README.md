@@ -8,9 +8,9 @@ APT Hunter 是一个独立建设的 APT 威胁情报采集、分析、审核、�
 
 - 高保真产品原型：[`outputs/apt-hunter-prototype`](./outputs/apt-hunter-prototype)
 - 产品与工程设计：[`outputs/apt-hunter-engineering-docs`](./outputs/apt-hunter-engineering-docs)
-- 工程状态：M3 字段级复核与威胁事件沉淀纵向切片已上线
+- 工程状态：M4 攻击组织规范化与持续跟踪纵向切片已上线
 
-当前已完成工程基座、RSS 数据源管理、定时采集、去重与 APT 相关性筛选；候选文章会自动抓取正文，按照攻击钻石模型提取对手、能力、基础设施和受害者。分析员可逐项保留、排除或补充实体，审核通过后系统会保留版本化修订并生成威胁事件。
+当前已完成工程基座、RSS 数据源管理、定时采集、去重与 APT 相关性筛选；候选文章会自动抓取正文，按照攻击钻石模型提取对手、能力、基础设施和受害者。分析员可逐项保留、排除或补充实体，审核通过后系统会保留版本化修订并生成威胁事件。已确认事件中的组织名称会按别名归并为稳定档案，可按本月、本年、全部或自定义日期查看组织攻击事件与月/年统计。
 
 部署环境访问地址：`http://server.example.com:8180`。
 
@@ -30,7 +30,7 @@ infra/          本地开发和部署编排
 outputs/        原型与工程设计文档
 ```
 
-详细需求、接口、数据模型和开发里程碑请从[工程文档索引](./outputs/apt-hunter-engineering-docs/README.md)开始阅读；当前实现状态见 [M3 状态说明](./docs/m3-status.md)。
+详细需求、接口、数据模型和开发里程碑请从[工程文档索引](./outputs/apt-hunter-engineering-docs/README.md)开始阅读；当前实现状态见 [M4 状态说明](./docs/m4-status.md)，上一阶段记录见 [M3 状态说明](./docs/m3-status.md)。
 
 ## 开发命令
 
