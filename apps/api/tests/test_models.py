@@ -9,3 +9,11 @@ def test_initial_metadata_contains_intelligence_tables() -> None:
         "threat_events",
         "event_reports",
     }
+
+
+def test_rss_polling_indexes_are_registered() -> None:
+    source_indexes = {index.name for index in Base.metadata.tables["sources"].indexes}
+    report_indexes = {index.name for index in Base.metadata.tables["reports"].indexes}
+
+    assert "ix_sources_due_poll" in source_indexes
+    assert "ix_reports_source_published_at" in report_indexes

@@ -1,6 +1,10 @@
 from fastapi import APIRouter
 
 from apt_hunter.api.routes.health import router as health_router
+from apt_hunter.api.routes.reports import router as reports_router
+from apt_hunter.api.routes.sources import router as sources_router
 
 api_router = APIRouter()
 api_router.include_router(health_router, prefix="/health", tags=["health"])
+api_router.include_router(sources_router, prefix="/sources", tags=["sources"])
+api_router.include_router(reports_router, prefix="/reports", tags=["reports"])

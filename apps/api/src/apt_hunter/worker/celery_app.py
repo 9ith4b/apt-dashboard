@@ -7,6 +7,7 @@ celery_app = Celery(
     "apt_hunter",
     broker=settings.redis_url,
     backend=settings.redis_url,
+    include=["apt_hunter.tasks.rss"],
 )
 celery_app.conf.update(
     task_serializer="json",
@@ -17,6 +18,12 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
 )
+celery_app.conf.beat_schedule = {
+    "poll-due-rss-sources": {
+        "task": "apt_hunter.sources.poll_due",
+        "schedule": 60.0,
+    }
+}
 
 
 @celery_app.task(name="apt_hunter.system.ping")  # type: ignore[untyped-decorator]

@@ -29,6 +29,8 @@ describe("APT Hunter application shell", () => {
       })
     )
 
-    expect(screen.getByText(/研究人员观察到针对政府与外交机构/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/研究人员观察到针对政府与外交机构/)
+    ).toBeInTheDocument()
   })
 })

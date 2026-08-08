@@ -80,7 +80,10 @@ export function AppSidebar() {
       <SidebarFooter className="p-3">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="border border-sidebar-border" size="lg">
+            <SidebarMenuButton
+              className="border border-sidebar-border"
+              size="lg"
+            >
               <span className="size-2 rounded-full bg-confirmed" />
               <span>4/4 基础服务就绪</span>
               <BellRingIcon aria-hidden="true" />

@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     minio_secure: bool = False
     minio_bucket: str = "apt-hunter-raw"
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    rss_user_agent: str = "APT-Hunter/0.1 (+https://localhost)"
+    rss_timeout_seconds: float = 20.0
+    rss_relevance_threshold: int = 50
+    rss_scheduler_batch_size: int = 20
 
 
 @lru_cache

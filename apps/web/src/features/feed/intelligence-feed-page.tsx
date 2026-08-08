@@ -19,7 +19,12 @@ import { feedItems, type FeedItem } from "./feed-data"
 
 const metrics = [
   { label: "新增材料", value: 17, note: "近 24 小时", icon: FileTextIcon },
-  { label: "高相关事件", value: 5, note: "需要优先查看", icon: AlertCircleIcon },
+  {
+    label: "高相关事件",
+    value: 5,
+    note: "需要优先查看",
+    icon: AlertCircleIcon,
+  },
   { label: "待审核", value: 8, note: "等待人工确认", icon: Clock3Icon },
   { label: "采集异常", value: 0, note: "所有数据源正常", icon: InfoIcon },
 ] as const
@@ -44,8 +49,8 @@ function FeedRow({
   return (
     <button
       className={cn(
-        "grid w-full grid-cols-[3.5rem_minmax(0,1fr)_13rem] items-center gap-3 border-b border-border px-4 py-4 text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        selected ? "bg-accent/55 ring-1 ring-inset ring-primary" : ""
+        "grid w-full grid-cols-[3.5rem_minmax(0,1fr)_13rem] items-center gap-3 border-b border-border px-4 py-4 text-left transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        selected ? "bg-accent/55 ring-1 ring-primary ring-inset" : ""
       )}
       onClick={() => onSelect(item)}
       type="button"
@@ -105,7 +110,9 @@ function EventInspector({ item }: { item: FeedItem }) {
         </div>
         <section className="flex flex-col gap-2">
           <h4 className="font-medium">简要描述</h4>
-          <p className="text-sm leading-6 text-muted-foreground">{item.summary}</p>
+          <p className="text-sm leading-6 text-muted-foreground">
+            {item.summary}
+          </p>
         </section>
         <section className="flex flex-col gap-3">
           <h4 className="font-medium">威胁钻石模型</h4>
@@ -176,7 +183,9 @@ export function IntelligenceFeedPage() {
                 </strong>
                 <span className="truncate font-medium">{metric.label}</span>
               </span>
-              <span className="text-sm text-muted-foreground">{metric.note}</span>
+              <span className="text-sm text-muted-foreground">
+                {metric.note}
+              </span>
             </span>
           </div>
         ))}

@@ -38,10 +38,12 @@ export function AppShell() {
     >
       <AppSidebar />
       <SidebarInset className="min-w-0 bg-background">
-        <header className="flex h-18 shrink-0 items-center gap-4 border-b border-border px-7">
+        <header className="flex h-18 shrink-0 items-center gap-2 border-b border-border px-3 sm:gap-4 sm:px-7">
           <SidebarTrigger className="md:hidden" />
           <div className="flex min-w-0 items-center gap-5">
-            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            <h1 className="text-xl font-semibold tracking-tight whitespace-nowrap sm:text-2xl">
+              {title}
+            </h1>
             <span className="hidden text-sm text-muted-foreground lg:inline">
               2026年8月8日 · 星期六
             </span>
@@ -58,10 +60,15 @@ export function AppShell() {
             <Button aria-label="通知" size="icon" variant="outline">
               <BellIcon />
             </Button>
-            <Button aria-label="知识库" size="icon" variant="outline">
+            <Button
+              aria-label="知识库"
+              className="hidden sm:inline-flex"
+              size="icon"
+              variant="outline"
+            >
               <BookOpenIcon />
             </Button>
-            <Button variant="ghost">
+            <Button className="hidden lg:inline-flex" variant="ghost">
               <CircleUserRoundIcon data-icon="inline-start" />
               分析师
             </Button>
