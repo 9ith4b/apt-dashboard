@@ -96,7 +96,7 @@ services:
   beat:
     build:
       context: ../apps/api
-    command: ["celery", "-A", "apt_hunter.worker.celery_app:celery_app", "beat", "--loglevel=INFO"]
+    command: ["celery", "-A", "apt_hunter.worker.celery_app:celery_app", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
     environment: *api-environment
     depends_on:
       redis:
