@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   getReport,
   listReports,
@@ -316,13 +316,19 @@ export function IntelligenceFeedPage() {
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-4">
               <h2 className="text-lg font-semibold">APT 候选材料</h2>
-              <Tabs value={filter} onValueChange={setFilter}>
-                <TabsList>
-                  <TabsTrigger value="all">全部</TabsTrigger>
-                  <TabsTrigger value="high">高相关</TabsTrigger>
-                  <TabsTrigger value="pending">待审核</TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <ToggleGroup
+                type="single"
+                value={filter}
+                variant="outline"
+                spacing={0}
+                onValueChange={(value) => {
+                  if (value) setFilter(value)
+                }}
+              >
+                <ToggleGroupItem value="all">全部</ToggleGroupItem>
+                <ToggleGroupItem value="high">高相关</ToggleGroupItem>
+                <ToggleGroupItem value="pending">待审核</ToggleGroupItem>
+              </ToggleGroup>
             </div>
             <Button variant="outline">
               <SlidersHorizontalIcon data-icon="inline-start" />

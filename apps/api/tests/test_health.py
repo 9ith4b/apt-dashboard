@@ -12,7 +12,7 @@ def test_liveness() -> None:
     assert response.json() == {
         "status": "ok",
         "service": "apt-hunter-api",
-        "version": "0.1.0",
+        "version": "1.0.0",
     }
 
 

@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 
 import { ApiError } from "@/lib/api"
 
@@ -54,6 +55,8 @@ function WorkspaceAuth({
 }
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [session, setSession] = useState<AuthSession | null>(null)
   const [loading, setLoading] = useState(import.meta.env.MODE !== "test")
   const [pending, setPending] = useState(false)
@@ -84,6 +87,28 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       window.removeEventListener("apt-hunter:unauthorized", unauthorized)
     }
   }, [])
+
+  useEffect(() => {
+    if (import.meta.env.MODE === "test" || loading) return
+    if (!session && location.pathname !== "/login") {
+      navigate("/login", {
+        replace: true,
+        state: { from: `${location.pathname}${location.search}` },
+      })
+      return
+    }
+    if (session && location.pathname === "/login") {
+      const state = location.state as { from?: string } | null
+      navigate(state?.from ?? "/feed", { replace: true })
+    }
+  }, [
+    loading,
+    location.pathname,
+    location.search,
+    location.state,
+    navigate,
+    session,
+  ])
 
   if (import.meta.env.MODE === "test") {
     return (

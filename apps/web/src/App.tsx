@@ -71,8 +71,8 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthGate>
-          <BrowserRouter>
+        <BrowserRouter>
+          <AuthGate>
             <Routes>
               <Route element={<AppShell />}>
                 <Route index element={<Navigate replace to="/feed" />} />
@@ -144,8 +144,8 @@ export function App() {
                 />
               </Route>
             </Routes>
-          </BrowserRouter>
-        </AuthGate>
+          </AuthGate>
+        </BrowserRouter>
         <Toaster position="top-right" richColors />
       </TooltipProvider>
     </QueryClientProvider>

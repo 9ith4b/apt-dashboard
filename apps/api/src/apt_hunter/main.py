@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from apt_hunter import __version__
 from apt_hunter.api.router import api_router
 from apt_hunter.config import get_settings
 from apt_hunter.metrics import MetricsMiddleware
@@ -12,7 +13,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title=settings.app_name,
-        version="0.1.0",
+        version=__version__,
         docs_url="/docs" if settings.environment != "production" else None,
         redoc_url=None,
     )

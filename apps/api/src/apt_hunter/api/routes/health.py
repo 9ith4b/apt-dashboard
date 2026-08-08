@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from redis import Redis
 from sqlalchemy import text
 
+from apt_hunter import __version__
 from apt_hunter.config import get_settings
 from apt_hunter.db.session import engine
 
@@ -67,7 +68,7 @@ async def run_check(check: Callable[[], bool]) -> bool:
 
 @router.get("/live", response_model=LiveResponse)
 def live() -> LiveResponse:
-    return LiveResponse(status="ok", service="apt-hunter-api", version="0.1.0")
+    return LiveResponse(status="ok", service="apt-hunter-api", version=__version__)
 
 
 @router.get("/ready", response_model=ReadyResponse)

@@ -1,13 +1,14 @@
 {
   "name": "apt-hunter",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "packageManager": "pnpm@11.16.0",
   "scripts": {
     "dev:web": "pnpm --filter web dev",
     "build:web": "pnpm --filter web build",
     "lint:web": "pnpm --filter web lint",
     "test:web": "pnpm --filter web test",
+    "e2e:web": "pnpm --filter web e2e",
     "typecheck:web": "pnpm --filter web typecheck"
   }
 }

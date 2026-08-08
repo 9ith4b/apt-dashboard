@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "apt-hunter-api"
-version = "0.1.0"
+version = "1.0.0"
 description = "APT Hunter API and asynchronous analysis worker"
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
@@ -28,9 +28,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "bandit>=1.8,<2",
   "mypy>=1.17,<2",
-  "pytest>=8.4,<9",
-  "pytest-cov>=6.2,<7",
+  "pip-audit>=2.9,<3",
+  "pytest>=9.0.3,<10",
+  "pytest-cov>=7,<8",
   "ruff>=0.12,<1",
 ]
 
