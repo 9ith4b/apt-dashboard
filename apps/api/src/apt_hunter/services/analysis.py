@@ -8,6 +8,7 @@ from apt_hunter.db.session import SessionLocal
 from apt_hunter.models import Report, ReportAnalysis
 from apt_hunter.services.article import ArticleDocument, fetch_article
 from apt_hunter.services.diamond import extract_diamond
+from apt_hunter.services.knowledge import persist_report_knowledge
 
 ArticleFetcher = Callable[..., ArticleDocument]
 
@@ -70,9 +71,19 @@ def analyze_report(
             analysis.infrastructure = diamond.infrastructure
             analysis.victims = diamond.victims
             analysis.evidence = diamond.evidence
+            analysis.observables = diamond.observables
+            analysis.attack_techniques = diamond.attack_techniques
             analysis.confidence_auto = diamond.confidence
-            analysis.method_version = "rules-v1"
+            analysis.method_version = "rules-v2"
             report.language = detect_language(article.text)
+            persist_report_knowledge(
+                session,
+                report_id=report_id,
+                observed_at=report.published_at or report.created_at,
+                observables=diamond.observables,
+                techniques=diamond.attack_techniques,
+                method_version="rules-v2",
+            )
             session.commit()
         return {
             "report_id": str(report_id),

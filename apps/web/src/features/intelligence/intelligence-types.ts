@@ -5,6 +5,27 @@ export type DiamondEntity = {
   evidence: string
 }
 
+export type ObservableCandidate = {
+  type: string
+  value: string
+  normalized: string
+  scope: string
+  confidence: number
+  evidence: string
+  start_offset: number
+  end_offset: number
+}
+
+export type AttackTechniqueCandidate = {
+  technique_id: string
+  name: string
+  tactic: string | null
+  confidence: number
+  evidence: string
+  start_offset: number
+  end_offset: number
+}
+
 export type ReportSummary = {
   id: string
   source_id: string
@@ -36,6 +57,8 @@ export type ReportAnalysis = {
   infrastructure: DiamondEntity[]
   victims: DiamondEntity[]
   evidence: Array<{ dimension?: string; entity?: string; quote?: string }>
+  observables: ObservableCandidate[]
+  attack_techniques: AttackTechniqueCandidate[]
   reviewed_actors: DiamondEntity[] | null
   reviewed_capabilities: DiamondEntity[] | null
   reviewed_infrastructure: DiamondEntity[] | null
@@ -82,6 +105,9 @@ export type ThreatEventSummary = {
   last_seen: string | null
   report_count: number
   actor_names: string[]
+  observable_count: number
+  technique_ids: string[]
+  superseded_by_id: string | null
   created_at: string
   updated_at: string
 }
@@ -94,6 +120,50 @@ export type ThreatEventDetail = ThreatEventSummary & {
     victims: DiamondEntity[]
   }
   reports: ReportSummary[]
+  observables: Array<{
+    id: string
+    type: string
+    value_original: string
+    value_normalized: string
+    scope: string
+    confidence: number
+    evidence_id: string
+    evidence: string
+    first_seen: string | null
+    last_seen: string | null
+  }>
+  attack_techniques: Array<{
+    technique_id: string
+    name: string
+    tactic: string | null
+    confidence: number
+    evidence_id: string
+    evidence: string
+  }>
+}
+
+export type EventMergeCandidate = {
+  id: string
+  source_event: {
+    id: string
+    title: string
+    first_seen: string | null
+    report_count: number
+  }
+  target_event: {
+    id: string
+    title: string
+    first_seen: string | null
+    report_count: number
+  }
+  score: number
+  features: Record<string, unknown>
+  status: "pending" | "approved" | "rejected" | "undone"
+  decision_reason: string | null
+  moved_report_ids: string[]
+  reviewed_at: string | null
+  version: number
+  created_at: string
 }
 
 export type ThreatActorSummary = {

@@ -1,6 +1,7 @@
 import { apiRequest } from "@/lib/api"
 
 import type {
+  EventMergeCandidate,
   ReportDetail,
   ReportSummary,
   ReportTask,
@@ -15,6 +16,7 @@ export const reportQueryKey = ["reports"] as const
 export const reviewQueueKey = ["reviews"] as const
 export const eventQueryKey = ["events"] as const
 export const actorQueryKey = ["actors"] as const
+export const mergeCandidateQueryKey = ["event-merge-candidates"] as const
 
 export function listReports() {
   return apiRequest<ReportSummary[]>("/reports?limit=200")
@@ -49,6 +51,41 @@ export function listThreatEvents() {
 
 export function getThreatEvent(eventId: string) {
   return apiRequest<ThreatEventDetail>(`/events/${eventId}`)
+}
+
+export function listMergeCandidates(
+  status: EventMergeCandidate["status"] = "pending"
+) {
+  return apiRequest<EventMergeCandidate[]>(
+    `/events/merge-candidates?candidate_status=${encodeURIComponent(status)}&limit=100`
+  )
+}
+
+export function decideEventMerge(
+  candidateId: string,
+  payload: {
+    decision: "approved" | "rejected"
+    reason: string | null
+    expected_version: number
+  }
+) {
+  return apiRequest<EventMergeCandidate>(
+    `/events/merge-candidates/${candidateId}/decision`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  )
+}
+
+export function undoEventMerge(candidateId: string, expectedVersion: number) {
+  return apiRequest<EventMergeCandidate>(
+    `/events/merge-candidates/${candidateId}/undo`,
+    {
+      method: "POST",
+      body: JSON.stringify({ expected_version: expectedVersion }),
+    }
+  )
 }
 
 function actorQuery(

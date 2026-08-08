@@ -6,10 +6,22 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from apt_hunter.db.base import Base
-from apt_hunter.models import Report, ReportAnalysis, Source
+from apt_hunter.models import (
+    Evidence,
+    Observable,
+    Report,
+    ReportAnalysis,
+    ReportObservable,
+    ReportTechnique,
+    Source,
+)
 from apt_hunter.services.analysis import analyze_report, detect_language
 from apt_hunter.services.article import ArticleDocument, normalize_article_text
 from apt_hunter.services.diamond import extract_diamond
+from apt_hunter.services.observable_extraction import (
+    extract_attack_techniques,
+    extract_observables,
+)
 
 
 def test_diamond_extraction_uses_explicit_evidence_only() -> None:
@@ -48,6 +60,27 @@ def test_diamond_extraction_ignores_reference_links_without_ioc_context() -> Non
     )
 
     assert result.infrastructure == []
+
+
+def test_deterministic_observable_and_attack_extraction_keeps_maliciousness_unset() -> None:
+    sha256 = "a" * 64
+    text = (
+        "The actor used 203.0.113.15 and private address 10.0.0.8. "
+        "Contact ops@evil-example.com and download https://evil-example.com/payload. "
+        f"SHA-256 {sha256}, CVE-2026-12345, and ATT&CK T1566.001 were observed."
+    )
+
+    observables = extract_observables(text)
+    techniques = extract_attack_techniques(text)
+
+    values = {(item["type"], item["normalized"]) for item in observables}
+    assert ("ipv4", "203.0.113.15") in values
+    assert ("ipv4", "10.0.0.8") in values
+    assert ("email", "ops@evil-example.com") in values
+    assert ("sha256", sha256) in values
+    assert ("cve", "CVE-2026-12345") in values
+    assert techniques[0]["technique_id"] == "T1566.001"
+    assert all("malicious" not in item for item in observables)
 
 
 def test_text_normalization_and_language_detection() -> None:
@@ -90,7 +123,9 @@ def test_analyze_report_persists_content_and_diamond(monkeypatch: pytest.MonkeyP
             html="<article>content</article>",
             text=(
                 "Midnight Blizzard ran a credential phishing campaign against travelers. "
-                "The attackers delivered malware and stole credentials. " * 4
+                "The attackers delivered malware from https://evil-example.com/payload, "
+                "using T1566.001 and SHA-256 "
+                f"{'b' * 64}. " * 4
             ),
         )
 
@@ -105,6 +140,12 @@ def test_analyze_report_persists_content_and_diamond(monkeypatch: pytest.MonkeyP
         assert analysis.extraction_status == "ready"
         assert analysis.review_status == "pending"
         assert analysis.actors[0]["name"] == "Midnight Blizzard / APT29"
+        assert analysis.observables
+        assert analysis.attack_techniques[0]["technique_id"] == "T1566.001"
         assert analysis.content_hash is not None
         assert outcome["status"] == "ready"
+        assert session.scalar(select(Observable)) is not None
+        assert session.scalar(select(ReportObservable)) is not None
+        assert session.scalar(select(ReportTechnique)) is not None
+        assert session.scalar(select(Evidence)) is not None
     Base.metadata.drop_all(engine)

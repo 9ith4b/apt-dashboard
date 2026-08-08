@@ -3,6 +3,11 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
+from apt_hunter.services.observable_extraction import (
+    extract_attack_techniques,
+    extract_observables,
+)
+
 _SENTENCE_BREAK = re.compile(r"(?<=[.!?。！？])\s+|\n+")
 _APT_PATTERN = re.compile(
     r"\b(?:APT[- ]?\d{1,3}|UNC\d{3,5}|FIN\d{3,5}|STORM-\d{3,5}|DEV-\d{3,5})\b", re.I
@@ -90,6 +95,8 @@ class DiamondResult:
     infrastructure: list[dict[str, object]]
     victims: list[dict[str, object]]
     evidence: list[dict[str, object]]
+    observables: list[dict[str, object]]
+    attack_techniques: list[dict[str, object]]
     confidence: int
 
 
@@ -222,5 +229,7 @@ def extract_diamond(
         infrastructure=infrastructure,
         victims=victims,
         evidence=evidence,
+        observables=extract_observables(content, publisher_url=publisher_url),
+        attack_techniques=extract_attack_techniques(content),
         confidence=confidence,
     )

@@ -2,11 +2,17 @@ import re
 from dataclasses import dataclass
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.orm import Session
 
-from apt_hunter.models import EventActor, ThreatActor, ThreatActorAlias
+from apt_hunter.models import (
+    EventActor,
+    EventReport,
+    ReportAnalysis,
+    ThreatActor,
+    ThreatActorAlias,
+)
 
 SEPARATOR_PATTERN = re.compile(
     r"\s*(?:/|\||;|,|\baka\b|\balso known as\b)\s*",
@@ -193,3 +199,17 @@ def sync_event_actors(
                 evidence=evidence,
             )
     session.add_all(links.values())
+
+
+def sync_event_actors_from_reports(session: Session, event_id: UUID) -> None:
+    actor_entities: list[dict[str, object]] = []
+    analyses = session.scalars(
+        select(ReportAnalysis)
+        .join(EventReport, EventReport.report_id == ReportAnalysis.report_id)
+        .where(EventReport.event_id == event_id)
+    )
+    for analysis in analyses:
+        actor_entities.extend(
+            analysis.reviewed_actors if analysis.reviewed_actors is not None else analysis.actors
+        )
+    sync_event_actors(session, event_id, actor_entities)

@@ -43,6 +43,8 @@ class AnalysisRead(BaseModel):
     infrastructure: list[DiamondEntity]
     victims: list[DiamondEntity]
     evidence: list[dict[str, object]]
+    observables: list[dict[str, object]]
+    attack_techniques: list[dict[str, object]]
     reviewed_actors: list[DiamondEntity] | None
     reviewed_capabilities: list[DiamondEntity] | None
     reviewed_infrastructure: list[DiamondEntity] | None

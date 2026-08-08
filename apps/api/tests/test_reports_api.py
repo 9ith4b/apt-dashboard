@@ -11,6 +11,7 @@ from apt_hunter.db.base import Base
 from apt_hunter.db.session import get_db
 from apt_hunter.main import app
 from apt_hunter.models import Report, ReportAnalysis, Source
+from apt_hunter.services.knowledge import persist_report_knowledge
 
 
 @pytest.fixture
@@ -59,6 +60,35 @@ def review_client() -> Generator[tuple[TestClient, str], None, None]:
                 evidence=[],
                 confidence_auto=80,
             )
+        )
+        persist_report_knowledge(
+            session,
+            report_id=report.id,
+            observed_at=report.published_at or report.created_at,
+            observables=[
+                {
+                    "type": "domain",
+                    "value": "evil-example.com",
+                    "normalized": "evil-example.com",
+                    "scope": "public",
+                    "confidence": 98,
+                    "evidence": "APT29 used evil-example.com for credential phishing.",
+                    "start_offset": 18,
+                    "end_offset": 34,
+                }
+            ],
+            techniques=[
+                {
+                    "technique_id": "T1566.001",
+                    "name": "MITRE ATT&CK T1566.001",
+                    "tactic": None,
+                    "confidence": 99,
+                    "evidence": "The campaign used spearphishing attachments (T1566.001).",
+                    "start_offset": 35,
+                    "end_offset": 44,
+                }
+            ],
+            method_version="rules-v2",
         )
         report_id = str(report.id)
 
@@ -134,6 +164,9 @@ def test_review_decision_is_versioned(review_client: tuple[TestClient, str]) -> 
     assert event.status_code == 200
     assert event.json()["diamond"]["capabilities"][0]["name"] == "Spearphishing"
     assert event.json()["reports"][0]["id"] == report_id
+    assert event.json()["observables"][0]["value_normalized"] == "evil-example.com"
+    assert event.json()["observables"][0]["evidence"]
+    assert event.json()["attack_techniques"][0]["technique_id"] == "T1566.001"
     assert revisions.status_code == 200
     assert revisions.json()[0]["review_version"] == 2
     assert revisions.json()[0]["snapshot"]["infrastructure"] == []
