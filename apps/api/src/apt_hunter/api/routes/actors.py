@@ -1,9 +1,12 @@
+import csv
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
+from io import StringIO
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -12,10 +15,13 @@ from apt_hunter.models import EventActor, ThreatActor, ThreatActorAlias, ThreatE
 from apt_hunter.schemas.actor import (
     ActorEventRead,
     ActorTimelineBucket,
+    ActorTrackingRead,
+    ActorTrackingSummaryRead,
     ThreatActorDetail,
     ThreatActorSummary,
 )
 from apt_hunter.services.actor_normalization import normalize_actor_key
+from apt_hunter.services.actor_tracking import Bucket, build_summary, build_tracking
 
 router = APIRouter()
 DbSession = Annotated[Session, Depends(get_db)]
@@ -140,6 +146,26 @@ def _timeline(
     ]
 
 
+def _tracking_result(
+    session: Session,
+    actor_id: UUID,
+    date_from: date | None,
+    date_to: date | None,
+    bucket: Bucket,
+) -> ActorTrackingRead:
+    actor = session.get(ThreatActor, actor_id)
+    if actor is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Actor not found")
+    rows = _event_rows(session, [actor_id], None, None).get(actor_id, [])
+    try:
+        return build_tracking(session, actor, rows, date_from, date_to, bucket)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error),
+        ) from error
+
+
 @router.get("", response_model=list[ThreatActorSummary])
 def list_threat_actors(
     session: DbSession,
@@ -161,6 +187,86 @@ def list_threat_actors(
         for actor_id in actor_ids
         if actor_id in actors
     ]
+
+
+@router.get("/{actor_id}/tracking", response_model=ActorTrackingRead)
+def get_actor_tracking(
+    actor_id: UUID,
+    session: DbSession,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    bucket: Bucket = "auto",
+) -> ActorTrackingRead:
+    return _tracking_result(session, actor_id, date_from, date_to, bucket)
+
+
+@router.post("/{actor_id}/tracking/summary", response_model=ActorTrackingSummaryRead)
+def generate_actor_tracking_summary(
+    actor_id: UUID,
+    session: DbSession,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    bucket: Bucket = "auto",
+) -> ActorTrackingSummaryRead:
+    tracking = _tracking_result(session, actor_id, date_from, date_to, bucket)
+    return build_summary(session, tracking)
+
+
+@router.get("/{actor_id}/tracking/export")
+def export_actor_tracking(
+    actor_id: UUID,
+    session: DbSession,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    bucket: Bucket = "auto",
+    export_format: Literal["json", "csv"] = Query(default="json", alias="format"),
+) -> Response:
+    tracking = _tracking_result(session, actor_id, date_from, date_to, bucket)
+    filename = f"actor-tracking-{actor_id}.{export_format}"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    if export_format == "json":
+        return JSONResponse(content=tracking.model_dump(mode="json"), headers=headers)
+
+    output = StringIO()
+    writer = csv.DictWriter(
+        output,
+        fieldnames=[
+            "record_type",
+            "category",
+            "value",
+            "event_id",
+            "title",
+            "first_seen",
+            "confidence",
+        ],
+    )
+    writer.writeheader()
+    for event in tracking.events:
+        writer.writerow(
+            {
+                "record_type": "event",
+                "event_id": event.id,
+                "title": event.title,
+                "first_seen": event.first_seen.isoformat() if event.first_seen else "",
+                "confidence": event.confidence if event.confidence is not None else "",
+            }
+        )
+    for change in tracking.changes:
+        for value in change.new_values:
+            writer.writerow({"record_type": "new", "category": change.category, "value": value})
+        for value in change.disappeared_values:
+            writer.writerow(
+                {
+                    "record_type": "disappeared",
+                    "category": change.category,
+                    "value": value,
+                }
+            )
+    return Response(
+        content="\ufeff" + output.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers=headers,
+    )
 
 
 @router.get("/{actor_id}", response_model=ThreatActorDetail)

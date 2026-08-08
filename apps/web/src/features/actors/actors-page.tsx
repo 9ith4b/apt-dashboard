@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import {
   ActivityIcon,
   AlertCircleIcon,
@@ -46,8 +46,13 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { ActorTrackingPanel } from "@/features/actors/actor-tracking-panel"
 import {
+  actorTrackingExportUrl,
+  actorTrackingQueryKey,
   actorQueryKey,
+  generateActorTrackingSummary,
+  getActorTracking,
   getThreatActor,
   listThreatActors,
 } from "@/features/intelligence/intelligence-api"
@@ -155,10 +160,26 @@ function ActorDetailPanel({
   actor,
   granularity,
   onGranularityChange,
+  tracking,
+  trackingPending,
+  trackingError,
+  summary,
+  summaryPending,
+  onGenerateSummary,
+  jsonExportUrl,
+  csvExportUrl,
 }: {
   actor: ThreatActorDetail
   granularity: "month" | "year"
   onGranularityChange: (value: "month" | "year") => void
+  tracking: Awaited<ReturnType<typeof getActorTracking>> | undefined
+  trackingPending: boolean
+  trackingError: string | undefined
+  summary: Awaited<ReturnType<typeof generateActorTrackingSummary>> | undefined
+  summaryPending: boolean
+  onGenerateSummary: () => void
+  jsonExportUrl: string
+  csvExportUrl: string
 }) {
   return (
     <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-4 sm:p-6">
@@ -213,6 +234,17 @@ function ActorDetailPanel({
           value={formatDateTime(actor.last_seen).split(" ")[0]}
         />
       </div>
+
+      <ActorTrackingPanel
+        csvExportUrl={csvExportUrl}
+        error={trackingError}
+        isGenerating={summaryPending}
+        isPending={trackingPending}
+        jsonExportUrl={jsonExportUrl}
+        onGenerateSummary={onGenerateSummary}
+        summary={summary}
+        tracking={tracking}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
         <Card>
@@ -337,6 +369,19 @@ export function ActorsPage() {
     queryFn: () => getThreatActor(selected!.id, { ...range, granularity }),
     enabled: Boolean(selected) && rangeIsValid,
   })
+  const trackingQuery = useQuery({
+    queryKey: [
+      ...actorTrackingQueryKey,
+      selected?.id,
+      range.dateFrom,
+      range.dateTo,
+    ],
+    queryFn: () => getActorTracking(selected!.id, range),
+    enabled: Boolean(selected) && rangeIsValid,
+  })
+  const summaryMutation = useMutation({
+    mutationFn: () => generateActorTrackingSummary(selected!.id, range),
+  })
   const totalEvents = actors.reduce(
     (total, actor) => total + actor.event_count,
     0
@@ -366,6 +411,7 @@ export function ActorsPage() {
                     if (value) {
                       setPreset(value as RangePreset)
                       setSelectedId(null)
+                      summaryMutation.reset()
                     }
                   }}
                   size="sm"
@@ -389,6 +435,7 @@ export function ActorsPage() {
                       onChange={(event) => {
                         setCustomFrom(event.target.value)
                         setSelectedId(null)
+                        summaryMutation.reset()
                       }}
                       type="date"
                       value={customFrom}
@@ -402,6 +449,7 @@ export function ActorsPage() {
                       onChange={(event) => {
                         setCustomTo(event.target.value)
                         setSelectedId(null)
+                        summaryMutation.reset()
                       }}
                       type="date"
                       value={customTo}
@@ -486,7 +534,10 @@ export function ActorsPage() {
               <ActorRow
                 actor={actor}
                 key={actor.id}
-                onSelect={setSelectedId}
+                onSelect={(actorId) => {
+                  setSelectedId(actorId)
+                  summaryMutation.reset()
+                }}
                 selected={selected?.id === actor.id}
               />
             ))}
@@ -517,8 +568,24 @@ export function ActorsPage() {
             ) : (
               <ActorDetailPanel
                 actor={detailQuery.data}
+                csvExportUrl={
+                  selected
+                    ? actorTrackingExportUrl(selected.id, range, "csv")
+                    : "#"
+                }
                 granularity={granularity}
+                jsonExportUrl={
+                  selected
+                    ? actorTrackingExportUrl(selected.id, range, "json")
+                    : "#"
+                }
+                onGenerateSummary={() => summaryMutation.mutate()}
                 onGranularityChange={setGranularity}
+                summary={summaryMutation.data}
+                summaryPending={summaryMutation.isPending}
+                tracking={trackingQuery.data}
+                trackingError={trackingQuery.error?.message}
+                trackingPending={trackingQuery.isPending}
               />
             )}
           </main>

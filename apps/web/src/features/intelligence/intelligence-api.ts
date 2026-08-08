@@ -1,6 +1,8 @@
 import { apiRequest } from "@/lib/api"
 
 import type {
+  ActorTracking,
+  ActorTrackingSummary,
   EventMergeCandidate,
   ReportDetail,
   ReportSummary,
@@ -16,6 +18,7 @@ export const reportQueryKey = ["reports"] as const
 export const reviewQueueKey = ["reviews"] as const
 export const eventQueryKey = ["events"] as const
 export const actorQueryKey = ["actors"] as const
+export const actorTrackingQueryKey = ["actor-tracking"] as const
 export const mergeCandidateQueryKey = ["event-merge-candidates"] as const
 
 export function listReports() {
@@ -124,4 +127,39 @@ export function getThreatActor(
   return apiRequest<ThreatActorDetail>(
     actorQuery(`/actors/${actorId}`, filters)
   )
+}
+
+export function getActorTracking(
+  actorId: string,
+  filters: {
+    dateFrom?: string
+    dateTo?: string
+  }
+) {
+  return apiRequest<ActorTracking>(
+    actorQuery(`/actors/${actorId}/tracking`, filters)
+  )
+}
+
+export function generateActorTrackingSummary(
+  actorId: string,
+  filters: {
+    dateFrom?: string
+    dateTo?: string
+  }
+) {
+  return apiRequest<ActorTrackingSummary>(
+    actorQuery(`/actors/${actorId}/tracking/summary`, filters),
+    { method: "POST" }
+  )
+}
+
+export function actorTrackingExportUrl(
+  actorId: string,
+  filters: { dateFrom?: string; dateTo?: string },
+  format: "json" | "csv"
+) {
+  const path = actorQuery(`/actors/${actorId}/tracking/export`, filters)
+  const separator = path.includes("?") ? "&" : "?"
+  return `/api/v1${path}${separator}format=${format}`
 }

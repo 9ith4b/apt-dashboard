@@ -49,6 +49,70 @@ const actorDetail = {
   ],
 }
 
+const actorTracking = {
+  actor_id: actorId,
+  canonical_name: actor.canonical_name,
+  period: {
+    date_from: "2026-01-01",
+    date_to: "2026-08-08",
+    previous_from: "2025-05-26",
+    previous_to: "2025-12-31",
+    day_count: 220,
+    bucket: "month",
+  },
+  comparison: {
+    current_event_count: 2,
+    previous_event_count: 1,
+    absolute_change: 1,
+    percentage_change: 100,
+  },
+  trend: actorDetail.timeline,
+  changes: [
+    {
+      category: "malware",
+      current_values: ["Cloud Credential Tool"],
+      previous_values: [],
+      new_values: ["Cloud Credential Tool"],
+      disappeared_values: [],
+    },
+    {
+      category: "infrastructure",
+      current_values: [],
+      previous_values: [],
+      new_values: [],
+      disappeared_values: [],
+    },
+    {
+      category: "techniques",
+      current_values: ["T1566.001 · Spearphishing Attachment"],
+      previous_values: [],
+      new_values: ["T1566.001 · Spearphishing Attachment"],
+      disappeared_values: [],
+    },
+    {
+      category: "targets",
+      current_values: ["Diplomatic organizations"],
+      previous_values: [],
+      new_values: ["Diplomatic organizations"],
+      disappeared_values: [],
+    },
+  ],
+  events: actorDetail.events,
+}
+
+const trackingSummary = {
+  actor_id: actorId,
+  status: "draft",
+  title: "Midnight Blizzard · 2026-01-01 至 2026-08-08 跟踪摘要",
+  summary: "所选周期共有 2 起已确认事件。",
+  highlights: ["较上一等长周期增加 1 起。"],
+  caveats: ["必须由分析员核对原始证据。"],
+  supporting_event_ids: actorDetail.events.map((event) => event.id),
+  supporting_evidence_ids: ["88888888-8888-4888-8888-888888888888"],
+  generated_at: "2026-08-08T08:00:00Z",
+  method_version: "tracking-rules-v1",
+}
+
 function jsonResponse(payload: unknown) {
   return new Response(JSON.stringify(payload), {
     headers: { "Content-Type": "application/json" },
@@ -62,6 +126,12 @@ describe("threat actor tracking", () => {
       "fetch",
       vi.fn((input: RequestInfo | URL) => {
         const url = String(input)
+        if (url.startsWith(`/api/v1/actors/${actorId}/tracking/summary`)) {
+          return Promise.resolve(jsonResponse(trackingSummary))
+        }
+        if (url.startsWith(`/api/v1/actors/${actorId}/tracking?`)) {
+          return Promise.resolve(jsonResponse(actorTracking))
+        }
         if (url.startsWith(`/api/v1/actors/${actorId}?`)) {
           return Promise.resolve(jsonResponse(actorDetail))
         }
@@ -82,7 +152,19 @@ describe("threat actor tracking", () => {
     expect(
       (await screen.findAllByText(actor.latest_event_title)).length
     ).toBeGreaterThan(0)
-    expect(await screen.findByText("2026 年 7 月")).toBeInTheDocument()
+    expect((await screen.findAllByText("2026 年 7 月")).length).toBeGreaterThan(
+      0
+    )
+    expect(await screen.findByText("等长周期对比")).toBeInTheDocument()
+    expect(screen.getByText("新增 · Cloud Credential Tool")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "JSON" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/tracking/export")
+    )
+
+    await user.click(screen.getByRole("button", { name: "生成摘要草稿" }))
+    expect(await screen.findByText(trackingSummary.title)).toBeInTheDocument()
+    expect(screen.getByText("2 个事件、1 条 Evidence 支撑")).toBeInTheDocument()
 
     await user.click(screen.getByRole("radio", { name: "自定义" }))
     await user.clear(screen.getByLabelText("开始日期"))
@@ -93,6 +175,10 @@ describe("threat actor tracking", () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
         "/api/v1/actors?date_from=2026-06-01&date_to=2026-07-31&limit=200",
+        expect.anything()
+      )
+      expect(fetch).toHaveBeenCalledWith(
+        `/api/v1/actors/${actorId}/tracking?date_from=2026-06-01&date_to=2026-07-31`,
         expect.anything()
       )
     })

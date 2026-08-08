@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -202,3 +202,94 @@ def test_rejected_review_does_not_create_event(review_client: tuple[TestClient, 
     assert rejected.json()["analysis"]["reviewed_actors"] == []
     assert client.get("/api/v1/events").json() == []
     assert client.get("/api/v1/actors").json() == []
+
+
+def test_actor_tracking_comparison_summary_and_export(
+    review_client: tuple[TestClient, str],
+) -> None:
+    client, report_id = review_client
+    approved = client.post(
+        f"/api/v1/reviews/{report_id}/decision",
+        json={
+            "decision": "approved",
+            "analyst_note": "Tracking evidence confirmed.",
+            "expected_version": 1,
+            "event_title": "APT29 fake interview operation",
+            "confidence_analyst": 93,
+            "actors": [
+                {
+                    "name": "Midnight Blizzard",
+                    "type": "threat-actor",
+                    "confidence": 95,
+                    "evidence": "APT29 attribution confirmed.",
+                }
+            ],
+            "capabilities": [
+                {
+                    "name": "Fake Interview Loader",
+                    "type": "malware",
+                    "confidence": 90,
+                    "evidence": "The loader was delivered during interviews.",
+                }
+            ],
+            "infrastructure": [
+                {
+                    "name": "evil-example.com",
+                    "type": "domain",
+                    "confidence": 95,
+                    "evidence": "The domain hosted credential phishing.",
+                }
+            ],
+            "victims": [
+                {
+                    "name": "Diplomatic organizations",
+                    "type": "sector",
+                    "confidence": 88,
+                    "evidence": "Diplomatic organizations were targeted.",
+                }
+            ],
+        },
+    )
+    assert approved.status_code == 200
+    actor_id = client.get("/api/v1/actors").json()[0]["id"]
+    today = date.today()
+    date_from = today - timedelta(days=1)
+    query = f"date_from={date_from.isoformat()}&date_to={today.isoformat()}"
+
+    tracking = client.get(f"/api/v1/actors/{actor_id}/tracking?{query}")
+    assert tracking.status_code == 200
+    payload = tracking.json()
+    assert payload["period"]["bucket"] == "day"
+    assert payload["period"]["day_count"] == 2
+    assert payload["comparison"] == {
+        "current_event_count": 1,
+        "previous_event_count": 0,
+        "absolute_change": 1,
+        "percentage_change": None,
+    }
+    changes = {item["category"]: item for item in payload["changes"]}
+    assert changes["malware"]["new_values"] == ["Fake Interview Loader"]
+    assert changes["infrastructure"]["new_values"] == ["evil-example.com"]
+    assert changes["targets"]["new_values"] == ["Diplomatic organizations"]
+    assert changes["techniques"]["new_values"][0].startswith("T1566.001")
+
+    summary = client.post(f"/api/v1/actors/{actor_id}/tracking/summary?{query}")
+    assert summary.status_code == 200
+    assert summary.json()["status"] == "draft"
+    assert summary.json()["supporting_event_ids"] == [payload["events"][0]["id"]]
+    assert summary.json()["supporting_evidence_ids"]
+    assert "分析员" in summary.json()["caveats"][2]
+
+    json_export = client.get(f"/api/v1/actors/{actor_id}/tracking/export?{query}&format=json")
+    csv_export = client.get(f"/api/v1/actors/{actor_id}/tracking/export?{query}&format=csv")
+    assert json_export.status_code == 200
+    assert "attachment" in json_export.headers["content-disposition"]
+    assert csv_export.status_code == 200
+    assert "record_type" in csv_export.text
+    assert "Fake Interview Loader" in csv_export.text
+    assert (
+        client.get(
+            f"/api/v1/actors/{actor_id}/tracking?date_from=2026-08-02&date_to=2026-08-01"
+        ).status_code
+        == 422
+    )

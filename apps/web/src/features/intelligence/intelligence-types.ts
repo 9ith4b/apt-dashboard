@@ -198,3 +198,48 @@ export type ThreatActorDetail = ThreatActorSummary & {
     event_count: number
   }>
 }
+
+export type ActorTracking = {
+  actor_id: string
+  canonical_name: string
+  period: {
+    date_from: string
+    date_to: string
+    previous_from: string
+    previous_to: string
+    day_count: number
+    bucket: "day" | "week" | "month"
+  }
+  comparison: {
+    current_event_count: number
+    previous_event_count: number
+    absolute_change: number
+    percentage_change: number | null
+  }
+  trend: Array<{
+    key: string
+    label: string
+    event_count: number
+  }>
+  changes: Array<{
+    category: "malware" | "infrastructure" | "techniques" | "targets"
+    current_values: string[]
+    previous_values: string[]
+    new_values: string[]
+    disappeared_values: string[]
+  }>
+  events: ActorEvent[]
+}
+
+export type ActorTrackingSummary = {
+  actor_id: string
+  status: "draft"
+  title: string
+  summary: string
+  highlights: string[]
+  caveats: string[]
+  supporting_event_ids: string[]
+  supporting_evidence_ids: string[]
+  generated_at: string
+  method_version: string
+}
