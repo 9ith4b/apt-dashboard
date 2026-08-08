@@ -1,10 +1,13 @@
 export type SourceHealth = "pending" | "healthy" | "degraded" | "disabled"
+export type SourceType = "rss" | "web" | "x" | "telegram"
 
 export type Source = {
   id: string
-  type: string
+  type: SourceType
   name: string
   url: string | null
+  config: Record<string, unknown>
+  credential_configured: boolean
   enabled: boolean
   health_status: SourceHealth
   poll_interval_minutes: number
@@ -19,14 +22,25 @@ export type Source = {
 }
 
 export type SourceCreate = {
+  type: SourceType
   name: string
-  url: string
+  url: string | null
+  config: Record<string, unknown>
+  secret_ref: string | null
   enabled: boolean
   poll_interval_minutes: number
 }
 
 export type SourceUpdate = Partial<
-  Pick<SourceCreate, "name" | "url" | "enabled" | "poll_interval_minutes">
+  Pick<
+    SourceCreate,
+    | "name"
+    | "url"
+    | "config"
+    | "secret_ref"
+    | "enabled"
+    | "poll_interval_minutes"
+  >
 >
 
 export type PollTask = {

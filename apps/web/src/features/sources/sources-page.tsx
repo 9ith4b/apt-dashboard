@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AlertTriangleIcon,
+  AtSignIcon,
   CheckCircle2Icon,
   Clock3Icon,
   DatabaseIcon,
   FileTextIcon,
+  Globe2Icon,
+  MessageCircleIcon,
   PlusIcon,
   RefreshCwIcon,
   RssIcon,
@@ -67,13 +70,40 @@ import {
   sourceQueryKey,
   updateSource,
 } from "./source-api"
-import type { Source, SourceCreate, SourceHealth } from "./source-types"
+import type {
+  Source,
+  SourceCreate,
+  SourceHealth,
+  SourceType,
+} from "./source-types"
 
 const EMPTY_SOURCE_FORM: SourceCreate = {
+  type: "rss",
   name: "",
   url: "",
+  config: {},
+  secret_ref: null,
   enabled: true,
   poll_interval_minutes: 60,
+}
+
+const SOURCE_LABELS: Record<SourceType, string> = {
+  rss: "RSS/Atom",
+  web: "公开 Web",
+  x: "X 官方 API",
+  telegram: "Telegram Bot API",
+}
+
+const SOURCE_DESCRIPTIONS: Record<SourceType, string> = {
+  rss: "定时拉取 RSS 2.0 或 Atom Feed。",
+  web: "定时读取一个公开 HTTP(S) 文章页面。",
+  x: "通过 X API v2 recent search 按查询语句采集。",
+  telegram: "通过 Telegram Bot API 读取已授权频道的更新。",
+}
+
+const SOURCE_SECRET_REFS: Partial<Record<SourceType, string>> = {
+  x: "APT_HUNTER_X_BEARER_TOKEN",
+  telegram: "APT_HUNTER_TELEGRAM_BOT_TOKEN",
 }
 
 const HEALTH_LABELS: Record<SourceHealth, string> = {
@@ -95,19 +125,64 @@ function formatDateTime(value: string | null) {
 }
 
 function validateSource(payload: SourceCreate) {
-  const errors: { name?: string; url?: string } = {}
+  const errors: {
+    name?: string
+    url?: string
+    query?: string
+    chatIds?: string
+  } = {}
   if (payload.name.trim().length < 2) {
     errors.name = "名称至少需要 2 个字符。"
   }
-  try {
-    const parsed = new URL(payload.url)
-    if (!["http:", "https:"].includes(parsed.protocol)) {
-      errors.url = "Feed URL 必须使用 HTTP 或 HTTPS。"
+  if (payload.type === "rss" || payload.type === "web") {
+    try {
+      const parsed = new URL(payload.url ?? "")
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        errors.url = "URL 必须使用 HTTP 或 HTTPS。"
+      }
+    } catch {
+      errors.url =
+        payload.type === "rss"
+          ? "请输入完整的 RSS 或 Atom 地址。"
+          : "请输入完整的公开网页地址。"
     }
-  } catch {
-    errors.url = "请输入完整的 RSS 或 Atom 地址。"
+  }
+  if (
+    payload.type === "x" &&
+    String(payload.config.query ?? "").trim().length === 0
+  ) {
+    errors.query = "请输入 X API 查询语句。"
+  }
+  if (
+    payload.type === "telegram" &&
+    (!Array.isArray(payload.config.chat_ids) ||
+      payload.config.chat_ids.length === 0)
+  ) {
+    errors.chatIds = "请输入至少一个 Telegram 频道 ID。"
   }
   return errors
+}
+
+function SourceIcon({ type }: { type: SourceType }) {
+  const Icon =
+    type === "rss"
+      ? RssIcon
+      : type === "web"
+        ? Globe2Icon
+        : type === "x"
+          ? AtSignIcon
+          : MessageCircleIcon
+  return <Icon aria-hidden="true" />
+}
+
+function sourceSummary(source: Source) {
+  if (source.url) return source.url
+  if (source.type === "x") return String(source.config?.query ?? "未配置查询")
+  if (source.type === "telegram") {
+    const chatIds = source.config?.chat_ids
+    return Array.isArray(chatIds) ? chatIds.join(", ") : "未配置频道"
+  }
+  return "—"
 }
 
 function HealthBadge({ status }: { status: SourceHealth }) {
@@ -182,7 +257,22 @@ function AddSourceDialog({
     event.preventDefault()
     setSubmitted(true)
     if (Object.keys(validateSource(form)).length > 0) return
-    onCreate({ ...form, name: form.name.trim(), url: form.url.trim() })
+    onCreate({
+      ...form,
+      name: form.name.trim(),
+      url: form.url?.trim() || null,
+    })
+  }
+
+  function changeType(type: SourceType) {
+    setSubmitted(false)
+    setForm((current) => ({
+      ...current,
+      type,
+      url: type === "rss" || type === "web" ? "" : null,
+      config: {},
+      secret_ref: SOURCE_SECRET_REFS[type] ?? null,
+    }))
   }
 
   return (
@@ -196,12 +286,32 @@ function AddSourceDialog({
       <DialogContent className="sm:max-w-lg">
         <form className="flex flex-col gap-5" onSubmit={submit}>
           <DialogHeader>
-            <DialogTitle>添加 RSS 数据源</DialogTitle>
+            <DialogTitle>添加采集连接器</DialogTitle>
             <DialogDescription>
-              系统将按计划拉取 RSS/Atom，规范化链接并进行 APT 相关性初筛。
+              选择公开来源或官方 API；系统会规范化内容并进行 APT 相关性初筛。
             </DialogDescription>
           </DialogHeader>
           <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="source-type">连接器类型</FieldLabel>
+              <select
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                id="source-type"
+                value={form.type}
+                onChange={(event) =>
+                  changeType(event.target.value as SourceType)
+                }
+              >
+                {Object.entries(SOURCE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <FieldDescription>
+                {SOURCE_DESCRIPTIONS[form.type]}
+              </FieldDescription>
+            </Field>
             <Field data-invalid={Boolean(errors.name)}>
               <FieldLabel htmlFor="source-name">名称</FieldLabel>
               <Input
@@ -219,27 +329,99 @@ function AddSourceDialog({
               />
               <FieldError>{errors.name}</FieldError>
             </Field>
-            <Field data-invalid={Boolean(errors.url)}>
-              <FieldLabel htmlFor="source-url">Feed URL</FieldLabel>
-              <Input
-                id="source-url"
-                aria-invalid={Boolean(errors.url)}
-                autoComplete="url"
-                placeholder="https://example.com/security/feed.xml"
-                type="url"
-                value={form.url}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    url: event.target.value,
-                  }))
-                }
-              />
-              <FieldDescription>
-                支持 RSS 2.0 与 Atom，必须使用 HTTP(S)。
-              </FieldDescription>
-              <FieldError>{errors.url}</FieldError>
-            </Field>
+            {form.type === "rss" || form.type === "web" ? (
+              <Field data-invalid={Boolean(errors.url)}>
+                <FieldLabel htmlFor="source-url">
+                  {form.type === "rss" ? "Feed URL" : "公开网页 URL"}
+                </FieldLabel>
+                <Input
+                  id="source-url"
+                  aria-invalid={Boolean(errors.url)}
+                  autoComplete="url"
+                  placeholder={
+                    form.type === "rss"
+                      ? "https://example.com/security/feed.xml"
+                      : "https://example.com/security/advisory"
+                  }
+                  type="url"
+                  value={form.url ?? ""}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      url: event.target.value,
+                    }))
+                  }
+                />
+                <FieldDescription>
+                  {form.type === "rss"
+                    ? "支持 RSS 2.0 与 Atom，必须使用 HTTP(S)。"
+                    : "仅支持无需登录即可访问的公开 HTTP(S) 页面。"}
+                </FieldDescription>
+                <FieldError>{errors.url}</FieldError>
+              </Field>
+            ) : null}
+            {form.type === "x" ? (
+              <Field data-invalid={Boolean(errors.query)}>
+                <FieldLabel htmlFor="source-query">X API 查询语句</FieldLabel>
+                <Input
+                  id="source-query"
+                  aria-invalid={Boolean(errors.query)}
+                  autoComplete="off"
+                  placeholder='例如 (APT28 OR "Fancy Bear") -is:retweet'
+                  value={String(form.config.query ?? "")}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      config: {
+                        ...current.config,
+                        query: event.target.value,
+                        max_results: 50,
+                      },
+                    }))
+                  }
+                />
+                <FieldDescription>
+                  凭据由服务端环境变量 APT_HUNTER_X_BEARER_TOKEN
+                  提供，不会写入数据库。
+                </FieldDescription>
+                <FieldError>{errors.query}</FieldError>
+              </Field>
+            ) : null}
+            {form.type === "telegram" ? (
+              <Field data-invalid={Boolean(errors.chatIds)}>
+                <FieldLabel htmlFor="source-chat-ids">
+                  Telegram 频道 ID
+                </FieldLabel>
+                <Input
+                  id="source-chat-ids"
+                  aria-invalid={Boolean(errors.chatIds)}
+                  autoComplete="off"
+                  placeholder="例如 -1001234567890, threatintel"
+                  value={
+                    Array.isArray(form.config.chat_ids)
+                      ? form.config.chat_ids.join(", ")
+                      : ""
+                  }
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      config: {
+                        ...current.config,
+                        chat_ids: event.target.value
+                          .split(",")
+                          .map((value) => value.trim())
+                          .filter(Boolean),
+                      },
+                    }))
+                  }
+                />
+                <FieldDescription>
+                  Bot 必须已加入频道；凭据由 APT_HUNTER_TELEGRAM_BOT_TOKEN
+                  提供。
+                </FieldDescription>
+                <FieldError>{errors.chatIds}</FieldError>
+              </Field>
+            ) : null}
             <Field>
               <FieldLabel htmlFor="poll-interval">采集间隔（分钟）</FieldLabel>
               <Input
@@ -307,21 +489,35 @@ function SourceInspector({
         <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-5">
           <div className="flex items-start gap-3">
             <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
-              <RssIcon aria-hidden="true" />
+              <SourceIcon type={source.type} />
             </span>
             <div className="min-w-0">
               <h3 className="truncate font-semibold">{source.name}</h3>
               <div className="mt-2 flex items-center gap-2">
-                <Badge variant="outline">RSS/Atom</Badge>
+                <Badge variant="outline">{SOURCE_LABELS[source.type]}</Badge>
                 <HealthBadge status={source.health_status} />
               </div>
             </div>
           </div>
           <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-3 text-sm">
-            <dt className="text-muted-foreground">Feed URL</dt>
-            <dd className="truncate" title={source.url ?? undefined}>
-              {source.url ?? "—"}
+            <dt className="text-muted-foreground">采集目标</dt>
+            <dd className="truncate" title={sourceSummary(source)}>
+              {sourceSummary(source)}
             </dd>
+            {source.type === "x" || source.type === "telegram" ? (
+              <>
+                <dt className="text-muted-foreground">服务端凭据</dt>
+                <dd>
+                  <Badge
+                    variant={
+                      source.credential_configured ? "confirmed" : "candidate"
+                    }
+                  >
+                    {source.credential_configured ? "已配置" : "待配置"}
+                  </Badge>
+                </dd>
+              </>
+            ) : null}
             <dt className="text-muted-foreground">采集间隔</dt>
             <dd>每 {source.poll_interval_minutes} 分钟</dd>
             <dt className="text-muted-foreground">最近成功</dt>
@@ -434,7 +630,7 @@ export function SourcesPage() {
           <div>
             <h2 className="text-lg font-semibold">采集连接器</h2>
             <p className="text-sm text-muted-foreground">
-              管理 RSS/Atom 来源、轮询状态与入库报告。
+              集中管理 RSS、公开网页与官方社交平台 API 的采集状态。
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -478,9 +674,9 @@ export function SourcesPage() {
         </section>
         <Card className="min-h-0 flex-1">
           <CardHeader className="border-b">
-            <CardTitle>RSS 数据源</CardTitle>
+            <CardTitle>数据源</CardTitle>
             <CardDescription>
-              启用后由 Celery Beat 按间隔调度；也可选择来源立即采集。
+              启用后由任务调度器按间隔采集；限流与失败会自动退避。
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -509,11 +705,11 @@ export function SourcesPage() {
               <Empty>
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
-                    <RssIcon />
+                    <DatabaseIcon />
                   </EmptyMedia>
-                  <EmptyTitle>还没有 RSS 数据源</EmptyTitle>
+                  <EmptyTitle>还没有数据源</EmptyTitle>
                   <EmptyDescription>
-                    添加第一个安全厂商或平台 Feed，开始建立采集闭环。
+                    添加第一个公开来源或官方 API，开始建立采集闭环。
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
@@ -545,12 +741,17 @@ export function SourcesPage() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <span className="flex size-8 items-center justify-center rounded-lg bg-secondary text-primary">
-                            <RssIcon />
+                            <SourceIcon type={source.type} />
                           </span>
                           <div className="min-w-0">
-                            <div className="font-medium">{source.name}</div>
+                            <div className="flex items-center gap-2 font-medium">
+                              <span>{source.name}</span>
+                              <span className="text-xs font-normal text-muted-foreground">
+                                {SOURCE_LABELS[source.type]}
+                              </span>
+                            </div>
                             <div className="max-w-72 truncate text-xs text-muted-foreground">
-                              {source.url}
+                              {sourceSummary(source)}
                             </div>
                           </div>
                         </div>

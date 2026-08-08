@@ -6,7 +6,7 @@ from sqlalchemy import or_, select
 from apt_hunter.config import get_settings
 from apt_hunter.db.session import SessionLocal
 from apt_hunter.models import Source
-from apt_hunter.services.collector import collect_rss_source
+from apt_hunter.services.collector import collect_source
 from apt_hunter.services.jobs import (
     mark_job_failed,
     mark_job_running,
@@ -22,7 +22,7 @@ def poll_source(source_id: str, job_id: str | None = None) -> dict[str, str | in
     if resolved_job_id:
         mark_job_running(resolved_job_id)
     try:
-        result = collect_rss_source(UUID(source_id)).as_dict()
+        result = collect_source(UUID(source_id)).as_dict()
     except Exception as error:
         if resolved_job_id:
             mark_job_failed(resolved_job_id, error)
@@ -41,7 +41,7 @@ def poll_due_sources() -> dict[str, int]:
             select(Source)
             .where(
                 Source.enabled.is_(True),
-                Source.type == "rss",
+                Source.type.in_(("rss", "web", "x", "telegram")),
                 or_(Source.next_poll_at.is_(None), Source.next_poll_at <= now),
             )
             .order_by(Source.next_poll_at.asc().nullsfirst())

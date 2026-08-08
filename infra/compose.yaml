@@ -57,6 +57,8 @@ services:
       APT_HUNTER_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-apt_hunter}
       APT_HUNTER_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       APT_HUNTER_MINIO_SECURE: "false"
+      APT_HUNTER_X_BEARER_TOKEN: ${APT_HUNTER_X_BEARER_TOKEN:-}
+      APT_HUNTER_TELEGRAM_BOT_TOKEN: ${APT_HUNTER_TELEGRAM_BOT_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy

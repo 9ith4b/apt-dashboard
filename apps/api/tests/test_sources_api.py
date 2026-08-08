@@ -73,3 +73,55 @@ def test_source_validation_rejects_unsafe_url(client: TestClient) -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_connector_configuration_stores_only_allowlisted_secret_references(
+    client: TestClient,
+) -> None:
+    web = client.post(
+        "/api/v1/sources",
+        json={
+            "type": "web",
+            "name": "Vendor research page",
+            "url": "https://example.com/security/research",
+            "config": {},
+            "enabled": False,
+        },
+    )
+    x_source = client.post(
+        "/api/v1/sources",
+        json={
+            "type": "x",
+            "name": "Official X recent search",
+            "config": {"query": "APT OR malware", "max_results": 25},
+            "secret_ref": "APT_HUNTER_X_BEARER_TOKEN",
+            "enabled": False,
+        },
+    )
+    telegram = client.post(
+        "/api/v1/sources",
+        json={
+            "type": "telegram",
+            "name": "Telegram bot channel updates",
+            "config": {"chat_ids": ["-10012345"]},
+            "secret_ref": "APT_HUNTER_TELEGRAM_BOT_TOKEN",
+            "enabled": False,
+        },
+    )
+    leaked_secret = client.post(
+        "/api/v1/sources",
+        json={
+            "type": "x",
+            "name": "Unsafe X source",
+            "config": {"query": "APT", "bearer_token": "secret"},
+            "secret_ref": "APT_HUNTER_X_BEARER_TOKEN",
+        },
+    )
+
+    assert web.status_code == 201
+    assert x_source.status_code == 201
+    assert x_source.json()["credential_configured"] is False
+    assert x_source.json()["config"]["query"] == "APT OR malware"
+    assert "secret_ref" not in x_source.json()
+    assert telegram.status_code == 201
+    assert leaked_secret.status_code == 422

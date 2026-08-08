@@ -9,6 +9,7 @@ from sqlalchemy import or_, select
 from apt_hunter.config import get_settings
 from apt_hunter.db.session import SessionLocal
 from apt_hunter.models import Report, Source
+from apt_hunter.services.connectors import ConnectorPage, fetch_connector_page
 from apt_hunter.services.rss import FeedFetchResult, FeedItem, fetch_feed, score_apt_relevance
 
 FeedFetcher = Callable[..., FeedFetchResult]
@@ -57,6 +58,86 @@ def _record_failure(source_id: UUID, message: str) -> None:
         session.commit()
 
 
+def _persist_page(
+    source_id: UUID,
+    page: ConnectorPage,
+    *,
+    now: datetime,
+    poll_interval_minutes: int,
+) -> CollectionResult:
+    settings = get_settings()
+    with SessionLocal() as session:
+        source = session.get(Source, source_id)
+        if source is None:
+            raise ValueError("Source was deleted while polling")
+        inserted = 0
+        duplicates = 0
+        candidates = 0
+        for item in page.items:
+            exact_hash = _exact_hash(item)
+            relevance_score, relevance_reasons = score_apt_relevance(item.title, item.summary)
+            status_value = (
+                "candidate" if relevance_score >= settings.rss_relevance_threshold else "filtered"
+            )
+            existing = session.scalar(
+                select(Report)
+                .where(
+                    or_(
+                        Report.canonical_url == item.url,
+                        Report.exact_hash == exact_hash,
+                    )
+                )
+                .limit(1)
+            )
+            if existing is not None:
+                existing.relevance_score = relevance_score
+                existing.relevance_reasons = relevance_reasons
+                existing.status = status_value
+                duplicates += 1
+                if status_value == "candidate":
+                    candidates += 1
+                continue
+            if status_value == "candidate":
+                candidates += 1
+            session.add(
+                Report(
+                    source_id=source.id,
+                    title=item.title,
+                    canonical_url=item.url,
+                    normalized_text=item.summary,
+                    exact_hash=exact_hash,
+                    relevance_score=relevance_score,
+                    relevance_reasons=relevance_reasons,
+                    status=status_value,
+                    published_at=item.published_at,
+                )
+            )
+            inserted += 1
+
+        interval_next = now + timedelta(minutes=poll_interval_minutes)
+        source.last_checked_at = now
+        source.last_success_at = now
+        source.next_poll_at = (
+            max(interval_next, page.next_poll_at) if page.next_poll_at else interval_next
+        )
+        source.health_status = "healthy"
+        source.consecutive_failures = 0
+        source.last_error = None
+        source.etag = page.etag
+        source.last_modified = page.last_modified
+        if page.cursor:
+            source.config = {**source.config, "cursor": page.cursor}
+        session.commit()
+    return CollectionResult(
+        source_id=source_id,
+        fetched=len(page.items),
+        inserted=inserted,
+        duplicates=duplicates,
+        candidates=candidates,
+        not_modified=page.not_modified,
+    )
+
+
 def collect_rss_source(
     source_id: UUID,
     *,
@@ -84,72 +165,39 @@ def collect_rss_source(
             user_agent=settings.rss_user_agent,
         )
 
-        with SessionLocal() as session:
-            source = session.get(Source, source_id)
-            if source is None:
-                raise ValueError("Source was deleted while polling")
-            inserted = 0
-            duplicates = 0
-            candidates = 0
-            for item in result.items:
-                exact_hash = _exact_hash(item)
-                relevance_score, relevance_reasons = score_apt_relevance(item.title, item.summary)
-                status_value = (
-                    "candidate"
-                    if relevance_score >= settings.rss_relevance_threshold
-                    else "filtered"
-                )
-                existing = session.scalar(
-                    select(Report)
-                    .where(
-                        or_(
-                            Report.canonical_url == item.url,
-                            Report.exact_hash == exact_hash,
-                        )
-                    )
-                    .limit(1)
-                )
-                if existing is not None:
-                    existing.relevance_score = relevance_score
-                    existing.relevance_reasons = relevance_reasons
-                    existing.status = status_value
-                    duplicates += 1
-                    if status_value == "candidate":
-                        candidates += 1
-                    continue
-                if status_value == "candidate":
-                    candidates += 1
-                session.add(
-                    Report(
-                        source_id=source.id,
-                        title=item.title,
-                        canonical_url=item.url,
-                        normalized_text=item.summary,
-                        exact_hash=exact_hash,
-                        relevance_score=relevance_score,
-                        relevance_reasons=relevance_reasons,
-                        status=status_value,
-                        published_at=item.published_at,
-                    )
-                )
-                inserted += 1
+        return _persist_page(
+            source_id,
+            ConnectorPage(
+                items=result.items,
+                etag=result.etag,
+                last_modified=result.last_modified,
+                not_modified=result.not_modified,
+            ),
+            now=now,
+            poll_interval_minutes=poll_interval_minutes,
+        )
+    except Exception as exc:
+        _record_failure(source_id, str(exc))
+        raise
 
-            source.last_checked_at = now
-            source.last_success_at = now
-            source.next_poll_at = now + timedelta(minutes=poll_interval_minutes)
-            source.health_status = "healthy"
-            source.consecutive_failures = 0
-            source.last_error = None
-            source.etag = result.etag
-            source.last_modified = result.last_modified
-            session.commit()
-        return CollectionResult(
-            source_id=source_id,
-            fetched=len(result.items),
-            inserted=inserted,
-            duplicates=duplicates,
-            candidates=candidates,
-            not_modified=result.not_modified,
+
+def collect_source(source_id: UUID) -> CollectionResult:
+    with SessionLocal() as session:
+        source = session.get(Source, source_id)
+        if source is None:
+            raise ValueError("Source not found")
+        if source.type == "rss":
+            return collect_rss_source(source_id)
+        poll_interval_minutes = source.poll_interval_minutes
+        session.expunge(source)
+    now = datetime.now(UTC)
+    try:
+        page = fetch_connector_page(source, get_settings())
+        return _persist_page(
+            source_id,
+            page,
+            now=now,
+            poll_interval_minutes=poll_interval_minutes,
         )
     except Exception as exc:
         _record_failure(source_id, str(exc))

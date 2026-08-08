@@ -9,6 +9,8 @@ const source = {
   type: "rss",
   name: "Microsoft Security Blog",
   url: "https://www.microsoft.com/en-us/security/blog/feed/",
+  config: {},
+  credential_configured: false,
   enabled: true,
   health_status: "healthy",
   poll_interval_minutes: 60,
@@ -29,7 +31,7 @@ function jsonResponse(payload: unknown, status = 200) {
   })
 }
 
-describe("RSS source management", () => {
+describe("source connector management", () => {
   beforeEach(() => {
     window.history.pushState({}, "", "/sources")
     vi.stubGlobal(
@@ -40,12 +42,19 @@ describe("RSS source management", () => {
           return Promise.resolve(jsonResponse([source]))
         }
         if (String(input) === "/api/v1/sources" && method === "POST") {
+          const payload = JSON.parse(String(init?.body))
           return Promise.resolve(
             jsonResponse(
               {
                 ...source,
-                id: "22222222-2222-4222-8222-222222222222",
-                name: "CISA",
+                id:
+                  payload.type === "x"
+                    ? "33333333-3333-4333-8333-333333333333"
+                    : "22222222-2222-4222-8222-222222222222",
+                name: payload.name,
+                type: payload.type,
+                url: payload.url,
+                config: payload.config,
               },
               201
             )
@@ -86,5 +95,36 @@ describe("RSS source management", () => {
     await user.click(screen.getByRole("button", { name: "保存数据源" }))
 
     expect((await screen.findAllByText("CISA")).length).toBeGreaterThan(0)
+  })
+
+  it("creates an X connector without sending credential values", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findAllByText("Microsoft Security Blog")
+
+    await user.click(screen.getByRole("button", { name: "添加数据源" }))
+    await user.selectOptions(screen.getByLabelText("连接器类型"), "x")
+    await user.type(screen.getByLabelText("名称"), "APT28 on X")
+    await user.type(
+      screen.getByLabelText("X API 查询语句"),
+      '(APT28 OR "Fancy Bear") -is:retweet'
+    )
+    await user.click(screen.getByRole("button", { name: "保存数据源" }))
+
+    const postCall = vi
+      .mocked(fetch)
+      .mock.calls.find(([, init]) => init?.method === "POST")
+    expect(postCall).toBeDefined()
+    const payload = JSON.parse(String(postCall?.[1]?.body))
+    expect(payload).toMatchObject({
+      type: "x",
+      url: null,
+      secret_ref: "APT_HUNTER_X_BEARER_TOKEN",
+      config: {
+        query: '(APT28 OR "Fancy Bear") -is:retweet',
+        max_results: 50,
+      },
+    })
+    expect(JSON.stringify(payload)).not.toContain("Bearer")
   })
 })

@@ -1,5 +1,6 @@
+import os
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -9,7 +10,14 @@ from sqlalchemy.orm import Session
 
 from apt_hunter.db.session import get_db
 from apt_hunter.models import Report, Source
-from apt_hunter.schemas.source import SourceCreate, SourceRead, SourceUpdate, TaskQueued
+from apt_hunter.schemas.source import (
+    SourceCreate,
+    SourceRead,
+    SourceType,
+    SourceUpdate,
+    TaskQueued,
+    _validate_connector,
+)
 from apt_hunter.services.jobs import create_job, dispatch_job
 
 router = APIRouter()
@@ -17,7 +25,13 @@ DbSession = Annotated[Session, Depends(get_db)]
 
 
 def _source_read(source: Source, report_count: int = 0) -> SourceRead:
-    return SourceRead.model_validate(source).model_copy(update={"report_count": report_count})
+    credential_configured = bool(source.secret_ref and os.getenv(source.secret_ref))
+    return SourceRead.model_validate(source).model_copy(
+        update={
+            "report_count": report_count,
+            "credential_configured": credential_configured,
+        }
+    )
 
 
 def _get_source_or_404(session: Session, source_id: UUID) -> Source:
@@ -44,12 +58,13 @@ def create_source(payload: SourceCreate, session: DbSession) -> SourceRead:
     source = Source(
         type=payload.type,
         name=payload.name.strip(),
-        url=str(payload.url),
+        url=str(payload.url) if payload.url else None,
         enabled=payload.enabled,
         poll_interval_minutes=payload.poll_interval_minutes,
         health_status="pending" if payload.enabled else "disabled",
         next_poll_at=datetime.now(UTC) if payload.enabled else None,
-        config={},
+        config=payload.config,
+        secret_ref=payload.secret_ref,
     )
     session.add(source)
     try:
@@ -74,6 +89,15 @@ def update_source(
     changes = payload.model_dump(exclude_unset=True)
     if "url" in changes and changes["url"] is not None:
         changes["url"] = str(changes["url"])
+
+    next_config = changes.get("config", source.config)
+    next_secret_ref = changes.get("secret_ref", source.secret_ref)
+    _validate_connector(
+        cast(SourceType, source.type),
+        payload.url if "url" in changes else source.url,
+        next_config if isinstance(next_config, dict) else {},
+        next_secret_ref if isinstance(next_secret_ref, str) else None,
+    )
 
     was_enabled = source.enabled
     for field, value in changes.items():
@@ -108,11 +132,6 @@ def update_source(
 )
 def queue_source_poll(source_id: UUID, session: DbSession) -> TaskQueued:
     source = _get_source_or_404(session, source_id)
-    if source.type != "rss":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Only RSS sources can be polled in M1",
-        )
     job = create_job(
         session,
         job_type="source_poll",
