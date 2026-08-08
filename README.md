@@ -8,9 +8,9 @@ APT Hunter 是一个独立建设的 APT 威胁情报采集、分析、审核、�
 
 - 高保真产品原型：[`outputs/apt-hunter-prototype`](./outputs/apt-hunter-prototype)
 - 产品与工程设计：[`outputs/apt-hunter-engineering-docs`](./outputs/apt-hunter-engineering-docs)
-- 工程状态：M5 情报知识核心与事件合并审核纵向切片已上线
+- 工程状态：M6 IOC 狩猎与 Campaign 纵向切片已上线
 
-当前已完成工程基座、RSS 数据源管理、定时采集、去重与 APT 相关性筛选；候选文章会自动抓取正文，按照攻击钻石模型提取对手、能力、基础设施和受害者，并沉淀带原文证据的 Observable 与 MITRE ATT&CK 技术。分析员可逐项保留、排除或补充实体，审核通过后系统会保留版本化修订并生成威胁事件。已确认事件中的组织名称会按别名归并为稳定档案，可按本月、本年、全部或自定义日期查看组织攻击事件与月/年统计。相似事件只生成待审核候选，支持人工合并、驳回和可追溯撤销。
+当前已完成工程基座、RSS 数据源管理、定时采集、去重与 APT 相关性筛选；候选文章会自动抓取正文，按照攻击钻石模型提取对手、能力、基础设施和受害者，并沉淀带原文证据的 Observable 与 MITRE ATT&CK 技术。分析员可逐项保留、排除或补充实体，审核通过后系统会保留版本化修订并生成威胁事件。已确认事件中的组织名称会按别名归并为稳定档案，可按本月、本年、全部或自定义日期查看组织攻击事件与月/年统计。相似事件只生成待审核候选，支持人工合并、驳回和可追溯撤销。Observable 可检索、查看事件上下文和本地富化，并在选择证据、用途、有效期、置信度及严重度后人工提升为 Indicator；Indicator 支持版本化撤销与恢复。分析员还可创建 Campaign，把已确认事件按阶段、置信度和证据说明加入可逆时间线。
 
 部署环境访问地址：`http://server.example.com:8180`。
 
@@ -30,7 +30,7 @@ infra/          本地开发和部署编排
 outputs/        原型与工程设计文档
 ```
 
-详细需求、接口、数据模型和开发里程碑请从[工程文档索引](./outputs/apt-hunter-engineering-docs/README.md)开始阅读；当前实现状态见 [M5 状态说明](./docs/m5-status.md)，完整范围差距见[交付完成矩阵](./docs/completion-matrix.md)。
+详细需求、接口、数据模型和开发里程碑请从[工程文档索引](./outputs/apt-hunter-engineering-docs/README.md)开始阅读；当前实现状态见 [M6 状态说明](./docs/m6-status.md)，完整范围差距见[交付完成矩阵](./docs/completion-matrix.md)。
 
 ## 开发命令
 

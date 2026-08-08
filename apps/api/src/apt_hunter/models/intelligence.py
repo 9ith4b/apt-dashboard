@@ -400,3 +400,122 @@ class EventMergeCandidate(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     moved_report_ids: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+
+class Indicator(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "indicators"
+    __table_args__ = (
+        CheckConstraint(
+            "confidence BETWEEN 0 AND 100",
+            name="indicator_confidence_range",
+        ),
+        CheckConstraint(
+            "severity IN ('info', 'low', 'medium', 'high', 'critical')",
+            name="indicator_severity_value",
+        ),
+        CheckConstraint("version >= 1", name="indicator_version_positive"),
+        UniqueConstraint("observable_id", name="uq_indicators_observable_id"),
+        Index("ix_indicators_revoked_valid_until", "revoked", "valid_until"),
+    )
+
+    observable_id: Mapped[UUID] = mapped_column(
+        ForeignKey("observables.id", ondelete="CASCADE"), nullable=False
+    )
+    purpose: Mapped[str] = mapped_column(String(500), nullable=False)
+    pattern: Mapped[str] = mapped_column(Text, nullable=False)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    valid_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    confidence: Mapped[int] = mapped_column(Integer, nullable=False)
+    severity: Mapped[str] = mapped_column(String(32), nullable=False)
+    revoked: Mapped[bool] = mapped_column(default=False, nullable=False)
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reviewed_by: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+
+class IndicatorEvidence(TimestampMixin, Base):
+    __tablename__ = "indicator_evidence"
+    __table_args__ = (Index("ix_indicator_evidence_evidence_id", "evidence_id"),)
+
+    indicator_id: Mapped[UUID] = mapped_column(
+        ForeignKey("indicators.id", ondelete="CASCADE"), primary_key=True
+    )
+    evidence_id: Mapped[UUID] = mapped_column(
+        ForeignKey("evidence.id", ondelete="RESTRICT"), primary_key=True
+    )
+
+
+class ObservableEnrichment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "observable_enrichments"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('completed', 'failed')",
+            name="observable_enrichment_status",
+        ),
+        UniqueConstraint(
+            "observable_id",
+            "provider",
+            name="uq_observable_enrichments_observable_provider",
+        ),
+        Index("ix_observable_enrichments_expires_at", "expires_at"),
+    )
+
+    observable_id: Mapped[UUID] = mapped_column(
+        ForeignKey("observables.id", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(String(100), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    queried_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    result: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
+    error: Mapped[str | None] = mapped_column(Text)
+
+
+class Campaign(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "campaigns"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active', 'inactive', 'closed')",
+            name="campaign_status_value",
+        ),
+        CheckConstraint("version >= 1", name="campaign_version_positive"),
+        UniqueConstraint("name", name="uq_campaigns_name"),
+        Index("ix_campaigns_status_last_seen", "status", "last_seen"),
+    )
+
+    name: Mapped[str] = mapped_column(String(300), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    first_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(32), default="active", nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+
+class CampaignEvent(TimestampMixin, Base):
+    __tablename__ = "campaign_events"
+    __table_args__ = (
+        CheckConstraint(
+            "stage IN ('unknown', 'reconnaissance', 'resource-development', "
+            "'initial-access', 'execution', 'persistence', 'privilege-escalation', "
+            "'defense-evasion', 'credential-access', 'discovery', 'lateral-movement', "
+            "'collection', 'command-and-control', 'exfiltration', 'impact')",
+            name="campaign_event_stage_value",
+        ),
+        CheckConstraint(
+            "confidence BETWEEN 0 AND 100",
+            name="campaign_event_confidence_range",
+        ),
+        Index("ix_campaign_events_event_campaign", "event_id", "campaign_id"),
+    )
+
+    campaign_id: Mapped[UUID] = mapped_column(
+        ForeignKey("campaigns.id", ondelete="CASCADE"), primary_key=True
+    )
+    event_id: Mapped[UUID] = mapped_column(
+        ForeignKey("threat_events.id", ondelete="CASCADE"), primary_key=True
+    )
+    stage: Mapped[str] = mapped_column(String(50), default="unknown", nullable=False)
+    confidence: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence_note: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reviewed_by: Mapped[str] = mapped_column(String(100), nullable=False)

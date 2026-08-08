@@ -6,12 +6,17 @@ def test_initial_metadata_contains_intelligence_tables() -> None:
     assert set(Base.metadata.tables) == {
         "analysis_revisions",
         "attack_techniques",
+        "campaign_events",
+        "campaigns",
         "event_merge_candidates",
         "event_actors",
         "event_observables",
         "sources",
         "evidence",
+        "indicator_evidence",
+        "indicators",
         "observables",
+        "observable_enrichments",
         "reports",
         "report_analyses",
         "report_observables",
@@ -46,4 +51,10 @@ def test_knowledge_foreign_keys_have_reverse_lookup_indexes() -> None:
     }
     assert "ix_event_merge_candidates_target_event" in {
         index.name for index in tables["event_merge_candidates"].indexes
+    }
+    assert "ix_indicator_evidence_evidence_id" in {
+        index.name for index in tables["indicator_evidence"].indexes
+    }
+    assert "ix_campaign_events_event_campaign" in {
+        index.name for index in tables["campaign_events"].indexes
     }
