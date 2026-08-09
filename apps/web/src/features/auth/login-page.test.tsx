@@ -29,9 +29,12 @@ it("renders the immersive login identity and toggles password visibility", async
     "aria-hidden",
     "true"
   )
-  expect(
-    screen.getByTitle("Black Hole by Nestaeric on Sketchfab")
-  ).toHaveAttribute("src", expect.stringContaining("dnt=1"))
+  const sceneFrame = screen.getByTitle("Black Hole by Nestaeric on Sketchfab")
+  expect(sceneFrame).toHaveAttribute("src", expect.stringContaining("dnt=1"))
+  expect(sceneFrame).toHaveAttribute(
+    "src",
+    expect.stringContaining("ui_loading=0")
+  )
   expect(
     screen.getByRole("link", { name: "Black Hole by Nestaeric · Sketchfab" })
   ).toHaveAttribute("rel", "nofollow noreferrer")
