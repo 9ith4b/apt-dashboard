@@ -5,7 +5,8 @@ import os
 from sqlalchemy import select
 
 from apt_hunter.db.session import SessionLocal
-from apt_hunter.models import User
+from apt_hunter.models import ThreatEvent, User
+from apt_hunter.services.actor_normalization import sync_event_actors_from_reports
 from apt_hunter.services.auth import hash_password
 
 
@@ -36,6 +37,14 @@ def create_user(args: argparse.Namespace) -> None:
     print(f"Created {args.role} user {username!r}")
 
 
+def backfill_event_actors(_args: argparse.Namespace) -> None:
+    with SessionLocal.begin() as session:
+        event_ids = list(session.scalars(select(ThreatEvent.id)))
+        for event_id in event_ids:
+            sync_event_actors_from_reports(session, event_id)
+    print(f"Synchronized actor relationships for {len(event_ids)} threat event(s)")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="APT Hunter administration")
     subparsers = parser.add_subparsers(required=True)
@@ -44,6 +53,11 @@ def main() -> None:
     user_parser.add_argument("--display-name", default="")
     user_parser.add_argument("--role", choices=("viewer", "analyst", "admin"), default="viewer")
     user_parser.set_defaults(func=create_user)
+    actor_parser = subparsers.add_parser(
+        "backfill-event-actors",
+        help="Rebuild normalized actor relationships for existing threat events",
+    )
+    actor_parser.set_defaults(func=backfill_event_actors)
     args = parser.parse_args()
     args.func(args)
 

@@ -122,6 +122,47 @@ def test_fetch_feed_treats_304_as_not_modified(monkeypatch: pytest.MonkeyPatch) 
     assert result.items == []
 
 
+def test_fetch_feed_validates_peer_before_client_closes(monkeypatch: pytest.MonkeyPatch) -> None:
+    active = {"value": False}
+    response = httpx.Response(
+        200,
+        content=RSS_SAMPLE,
+        headers={"content-type": "application/rss+xml"},
+        request=httpx.Request("GET", "https://example.com/feed"),
+    )
+
+    class FakeClient:
+        def __init__(self, **_: Any) -> None:
+            pass
+
+        def __enter__(self) -> "FakeClient":
+            active["value"] = True
+            return self
+
+        def __exit__(self, *_: Any) -> None:
+            active["value"] = False
+
+        def get(self, _: str) -> httpx.Response:
+            return response
+
+    def validate_while_connected(_: httpx.Response) -> None:
+        assert active["value"], "peer validation ran after the HTTP client closed"
+
+    monkeypatch.setattr("apt_hunter.services.rss.validate_public_feed_url", lambda _: None)
+    monkeypatch.setattr("apt_hunter.services.rss.validate_connected_peer", validate_while_connected)
+    monkeypatch.setattr("apt_hunter.services.rss.httpx.Client", FakeClient)
+
+    result = fetch_feed(
+        "https://example.com/feed",
+        etag=None,
+        last_modified=None,
+        timeout_seconds=5,
+        user_agent="APT-Hunter-Test",
+    )
+
+    assert len(result.items) == 1
+
+
 def test_fetch_feed_rejects_mime_size_and_compression_bombs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

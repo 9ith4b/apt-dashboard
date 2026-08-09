@@ -1,0 +1,26 @@
+[Unit]
+Description=APT Hunter PostgreSQL backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=apt-hunter
+Group=apt-hunter
+SupplementaryGroups=docker
+WorkingDirectory=/opt/apt-hunter/infra
+ExecStart=/opt/apt-hunter/infra/scripts/backup.sh
+Environment=HOME=/home/apt-hunter
+Environment=BACKUP_DIR=/var/backups/apt-hunter
+Environment=RETENTION_DAYS=14
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/backups/apt-hunter
+
+[Install]
+WantedBy=multi-user.target

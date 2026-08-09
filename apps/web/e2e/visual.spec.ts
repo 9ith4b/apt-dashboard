@@ -23,7 +23,9 @@ test("authenticated shell visual baseline", async ({ page }, testInfo) => {
     "Desktop visual baseline"
   )
   await login(page)
-  await expect(page.getByRole("button", { name: /基础服务就绪/ })).toBeVisible()
+  await expect(
+    page.getByText("4/4 基础服务就绪", { exact: true })
+  ).toBeVisible()
   await expect(page).toHaveScreenshot("app-shell.png", {
     fullPage: true,
     mask: [page.locator('[data-slot="sidebar-inset"] > :not(header)')],

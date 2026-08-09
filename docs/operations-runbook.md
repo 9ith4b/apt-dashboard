@@ -17,21 +17,19 @@ Prometheus 默认只监听服务器 `127.0.0.1:9090`，可用 SSH 端口转发�
 
 `infra/scripts/backup.sh` 使用 PostgreSQL custom format 生成备份，先验证目录与 dump 清单，再原子改名并写 SHA-256。默认目录是 `~/apt-hunter-backups`，权限为 `0700`，文件权限为 `0600`，默认保留 14 天。
 
-安装用户级定时器：
+生产环境安装系统级定时器。服务仍以 `apt-hunter` 用户运行，只为该进程补充用户已有的 `docker` 组；这样不会依赖长期运行的用户 systemd 管理器是否刷新了组成员关系：
 
 ```bash
-mkdir -p ~/.config/systemd/user
-cp infra/systemd/apt-hunter-backup.* ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now apt-hunter-backup.timer
-loginctl enable-linger "$USER"
+sudo cp infra/systemd/system/apt-hunter-backup.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now apt-hunter-backup.timer
 ```
 
 查看状态：
 
 ```bash
-systemctl --user list-timers apt-hunter-backup.timer
-journalctl --user -u apt-hunter-backup.service
+systemctl list-timers apt-hunter-backup.timer
+journalctl -u apt-hunter-backup.service
 ```
 
 ## 无损恢复演练

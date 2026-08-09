@@ -223,34 +223,34 @@ def fetch_feed(
             current_url = urljoin(current_url, location)
         else:
             raise ValueError("RSS feed exceeded the redirect limit")
-    if response.status_code == httpx.codes.NOT_MODIFIED:
+        if response.status_code == httpx.codes.NOT_MODIFIED:
+            return FeedFetchResult(
+                items=[],
+                etag=response.headers.get("etag") or etag,
+                last_modified=response.headers.get("last-modified") or last_modified,
+                not_modified=True,
+            )
+        response.raise_for_status()
+        validate_connected_peer(response)
+        content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
+        if content_type and content_type not in _SUPPORTED_FEED_TYPES:
+            raise ValueError(f"Unsupported feed content type: {content_type}")
+        payload = response.content
+        if len(payload) > max_bytes:
+            raise ValueError("RSS feed exceeds the configured size limit")
+        declared_length = response.headers.get("content-length")
+        if response.headers.get("content-encoding") and declared_length:
+            try:
+                compressed_bytes = max(int(declared_length), 1)
+            except ValueError as exc:
+                raise ValueError("RSS feed returned an invalid content length") from exc
+            if len(payload) / compressed_bytes > max_compression_ratio:
+                raise ValueError("RSS feed exceeded the compression ratio limit")
         return FeedFetchResult(
-            items=[],
-            etag=response.headers.get("etag") or etag,
-            last_modified=response.headers.get("last-modified") or last_modified,
-            not_modified=True,
+            items=parse_rss_document(payload),
+            etag=response.headers.get("etag"),
+            last_modified=response.headers.get("last-modified"),
         )
-    response.raise_for_status()
-    validate_connected_peer(response)
-    content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
-    if content_type and content_type not in _SUPPORTED_FEED_TYPES:
-        raise ValueError(f"Unsupported feed content type: {content_type}")
-    payload = response.content
-    if len(payload) > max_bytes:
-        raise ValueError("RSS feed exceeds the configured size limit")
-    declared_length = response.headers.get("content-length")
-    if response.headers.get("content-encoding") and declared_length:
-        try:
-            compressed_bytes = max(int(declared_length), 1)
-        except ValueError as exc:
-            raise ValueError("RSS feed returned an invalid content length") from exc
-        if len(payload) / compressed_bytes > max_compression_ratio:
-            raise ValueError("RSS feed exceeded the compression ratio limit")
-    return FeedFetchResult(
-        items=parse_rss_document(payload),
-        etag=response.headers.get("etag"),
-        last_modified=response.headers.get("last-modified"),
-    )
 
 
 def score_apt_relevance(title: str, summary: str) -> tuple[int, list[str]]:

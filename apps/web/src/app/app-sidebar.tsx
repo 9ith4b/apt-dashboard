@@ -61,7 +61,7 @@ export function AppSidebar() {
             <span className="block truncate text-sm font-semibold tracking-tight">
               APT Hunter
             </span>
-            <span className="block truncate text-[0.65rem] tracking-[0.12em] text-sidebar-foreground/55 uppercase">
+            <span className="block truncate text-[0.65rem] tracking-[0.12em] text-sidebar-foreground/70 uppercase">
               Intelligence Desk
             </span>
           </span>
@@ -108,7 +108,7 @@ export function AppSidebar() {
           </span>
           <span className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
             <span className="block text-xs font-medium">系统运行正常</span>
-            <span className="block truncate text-[0.65rem] text-sidebar-foreground/55">
+            <span className="block truncate text-[0.65rem] text-sidebar-foreground/70">
               4/4 基础服务就绪
             </span>
           </span>

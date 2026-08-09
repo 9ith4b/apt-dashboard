@@ -1,0 +1,11 @@
+[Unit]
+Description=Run APT Hunter backup every day
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 Asia/Shanghai
+RandomizedDelaySec=15m
+Persistent=true
+Unit=apt-hunter-backup.service
+
+[Install]
+WantedBy=timers.target

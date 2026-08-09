@@ -55,8 +55,10 @@ test("mobile navigation exposes all primary destinations", async ({
   await login(page)
   await page.getByRole("button", { name: "Toggle Sidebar" }).click()
   for (const [, title] of routes) {
+    const navigationTitle =
+      title === "IOC 狩猎" ? "IOC" : title === "Campaign" ? "攻击活动" : title
     await expect(
-      page.getByRole("link", { name: title === "IOC 狩猎" ? "IOC" : title })
+      page.getByRole("link", { name: navigationTitle })
     ).toBeVisible()
   }
 })

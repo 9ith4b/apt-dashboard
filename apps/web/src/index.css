@@ -87,9 +87,9 @@
   --type-mono:
     ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
-  --confirmed: oklch(0.55 0.14 176);
-  --candidate: oklch(0.67 0.17 72);
-  --malicious: oklch(0.577 0.245 27.325);
+  --confirmed: oklch(0.42 0.11 176);
+  --candidate: oklch(0.46 0.12 72);
+  --malicious: oklch(0.5 0.2 27.325);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
