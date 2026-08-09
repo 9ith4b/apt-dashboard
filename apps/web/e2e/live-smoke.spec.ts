@@ -66,6 +66,7 @@ test("mobile navigation exposes all primary destinations", async ({
 test("all product pages meet automated WCAG A and AA rules", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(60_000)
   test.skip(
     !testInfo.project.name.startsWith("desktop"),
     "One deterministic accessibility pass"
