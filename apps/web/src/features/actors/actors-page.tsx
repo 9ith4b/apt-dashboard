@@ -390,23 +390,33 @@ export function ActorsPage() {
   return (
     <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]">
       <header className="border-b border-border bg-surface px-4 py-4 sm:px-6">
-        <div className="flex flex-col justify-between gap-4 2xl:flex-row 2xl:items-end">
-          <div>
-            <div className="flex items-center gap-2">
-              <ShieldUserIcon className="size-5 text-primary" />
-              <h1 className="text-xl font-semibold">攻击组织持续跟踪</h1>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldUserIcon className="size-5 text-primary" />
+                <h1 className="text-xl font-semibold">攻击组织持续跟踪</h1>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                合并组织别名，按自定义日期、月和年查看已确认攻击事件
+              </p>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              合并组织别名，按自定义日期、月和年查看已确认攻击事件
-            </p>
+            {actors.length ? (
+              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <Badge variant="secondary">{actors.length} 个攻击组织</Badge>
+                <Badge variant="secondary">{totalEvents} 条组织—事件关联</Badge>
+              </div>
+            ) : null}
           </div>
-          <FieldGroup className="w-full 2xl:max-w-4xl">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-end">
-              <Field className="lg:w-auto">
+          <FieldGroup
+            className="w-full gap-3 rounded-xl border border-border bg-background p-3 shadow-xs sm:max-w-3xl sm:p-4"
+            data-testid="actor-date-filter"
+          >
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
+              <Field className="xl:w-auto xl:shrink-0">
                 <FieldLabel>日期范围</FieldLabel>
                 <ToggleGroup
                   aria-label="日期范围"
-                  className="w-full justify-start lg:w-auto"
                   onValueChange={(value) => {
                     if (value) {
                       setPreset(value as RangePreset)
@@ -414,7 +424,7 @@ export function ActorsPage() {
                       summaryMutation.reset()
                     }
                   }}
-                  size="sm"
+                  spacing={0}
                   type="single"
                   value={preset}
                   variant="outline"
@@ -426,8 +436,11 @@ export function ActorsPage() {
                 </ToggleGroup>
               </Field>
               {preset === "custom" ? (
-                <div className="grid grid-cols-2 gap-3 lg:w-[22rem]">
-                  <Field data-invalid={!rangeIsValid || undefined}>
+                <FieldGroup className="gap-3 sm:flex-row xl:w-[26rem] xl:shrink-0">
+                  <Field
+                    className="sm:flex-1"
+                    data-invalid={!rangeIsValid || undefined}
+                  >
                     <FieldLabel htmlFor="actor-date-from">开始日期</FieldLabel>
                     <Input
                       aria-invalid={!rangeIsValid || undefined}
@@ -441,7 +454,10 @@ export function ActorsPage() {
                       value={customFrom}
                     />
                   </Field>
-                  <Field data-invalid={!rangeIsValid || undefined}>
+                  <Field
+                    className="sm:flex-1"
+                    data-invalid={!rangeIsValid || undefined}
+                  >
                     <FieldLabel htmlFor="actor-date-to">结束日期</FieldLabel>
                     <Input
                       aria-invalid={!rangeIsValid || undefined}
@@ -455,22 +471,14 @@ export function ActorsPage() {
                       value={customTo}
                     />
                   </Field>
-                </div>
+                </FieldGroup>
               ) : null}
             </div>
             {!rangeIsValid ? (
-              <FieldError className="text-right">
-                开始日期不能晚于结束日期。
-              </FieldError>
+              <FieldError>开始日期不能晚于结束日期。</FieldError>
             ) : null}
           </FieldGroup>
         </div>
-        {actors.length ? (
-          <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <Badge variant="secondary">{actors.length} 个攻击组织</Badge>
-            <Badge variant="secondary">{totalEvents} 条组织—事件关联</Badge>
-          </div>
-        ) : null}
       </header>
 
       {!rangeIsValid ? (
