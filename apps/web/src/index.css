@@ -202,9 +202,8 @@
 
   .black-hole-wander-scene {
     position: absolute;
-    z-index: 0;
     inset: 0;
-    contain: strict;
+    contain: size;
     overflow: hidden;
     pointer-events: none;
   }
@@ -217,11 +216,22 @@
     opacity: 0.92;
   }
 
+  .black-hole-filter-definitions {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
+  .login-story-content {
+    transform: translateZ(0);
+  }
+
   .black-hole-accent {
     position: absolute;
     top: 0;
     left: 0;
-    z-index: 1;
+    z-index: 20;
     width: clamp(12.25rem, 20.5vw, 15.5rem);
     aspect-ratio: 1.15;
     contain: strict;
@@ -241,6 +251,21 @@
 
   .black-hole-accent > div {
     background: transparent;
+  }
+
+  .black-hole-event-horizon {
+    position: absolute;
+    z-index: 21;
+    top: 0;
+    left: 0;
+    border-radius: 50%;
+    background: #010101;
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 82%),
+      0 0 14px 5px rgb(0 0 0 / 86%);
+    pointer-events: none;
+    transform-origin: center;
+    will-change: transform;
   }
 
   .login-telemetry-row {

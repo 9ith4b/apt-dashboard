@@ -95,5 +95,9 @@ it("loads the wandering lens scene only after dark desktop becomes idle", async 
   expect(
     await screen.findByTestId("black-hole-lensing-field")
   ).toBeInTheDocument()
+  expect(
+    await screen.findByTestId("black-hole-event-horizon")
+  ).toBeInTheDocument()
   expect(await screen.findByTestId("black-hole-renderer")).toBeInTheDocument()
+  expect(document.querySelector("#black-hole-dom-lens")).toBeInTheDocument()
 })

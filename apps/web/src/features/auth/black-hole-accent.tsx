@@ -112,12 +112,52 @@ function traceLensedLine(
   context.stroke()
 }
 
+function createRadialDisplacementMap(size = 192) {
+  const map = document.createElement("canvas")
+  map.width = size
+  map.height = size
+  const context = map.getContext("2d")
+  if (!context) return null
+
+  const image = context.createImageData(size, size)
+  const center = size / 2
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const normalizedX = (x + 0.5 - center) / center
+      const normalizedY = (y + 0.5 - center) / center
+      const radius = Math.hypot(normalizedX, normalizedY)
+      const offset = (y * size + x) * 4
+      let red = 128
+      let green = 128
+
+      if (radius > 0.025 && radius < 1) {
+        const ring = Math.pow(Math.sin(radius * Math.PI), 0.72)
+        const falloff = 1 - radius * 0.18
+        const strength = ring * falloff * 118
+        red += (normalizedX / radius) * strength
+        green += (normalizedY / radius) * strength
+      }
+
+      image.data[offset] = Math.max(0, Math.min(255, Math.round(red)))
+      image.data[offset + 1] = Math.max(0, Math.min(255, Math.round(green)))
+      image.data[offset + 2] = 128
+      image.data[offset + 3] = 255
+    }
+  }
+  context.putImageData(image, 0, 0)
+  return map.toDataURL("image/png")
+}
+
 export function BlackHoleAccent() {
   const { theme } = useTheme()
   const [enabled, setEnabled] = useState(false)
   const sceneRef = useRef<HTMLDivElement | null>(null)
   const accentRef = useRef<HTMLDivElement | null>(null)
+  const horizonRef = useRef<HTMLDivElement | null>(null)
   const lensCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const domLensFilterRef = useRef<SVGFilterElement | null>(null)
+  const displacementImageRef = useRef<SVGFEImageElement | null>(null)
+  const displacementRef = useRef<SVGFEDisplacementMapElement | null>(null)
 
   useEffect(() => {
     const colorScheme = window.matchMedia(DARK_SCHEME_QUERY)
@@ -182,8 +222,9 @@ export function BlackHoleAccent() {
 
     const scene = sceneRef.current
     const accent = accentRef.current
+    const horizon = horizonRef.current
     const canvas = lensCanvasRef.current
-    if (!scene || !accent || !canvas) return
+    if (!scene || !accent || !horizon || !canvas) return
     if (import.meta.env.MODE === "test") return
 
     let context: CanvasRenderingContext2D | null = null
@@ -193,6 +234,27 @@ export function BlackHoleAccent() {
       return
     }
     if (!context) return
+
+    const story = scene.parentElement
+    const storyContent = story?.querySelector<HTMLElement>(
+      ".login-story-content"
+    )
+    const domLensFilter = domLensFilterRef.current
+    const displacementImage = displacementImageRef.current
+    const displacement = displacementRef.current
+    const displacementMap = createRadialDisplacementMap()
+    const domLensEnabled = Boolean(
+      storyContent &&
+      domLensFilter &&
+      displacementImage &&
+      displacement &&
+      displacementMap
+    )
+    if (domLensEnabled) {
+      displacementImage!.setAttribute("href", displacementMap!)
+      storyContent!.style.filter = "url(#black-hole-dom-lens)"
+      storyContent!.style.willChange = "filter"
+    }
 
     const visualTest = new URLSearchParams(window.location.search).has(
       "visual-test"
@@ -215,6 +277,10 @@ export function BlackHoleAccent() {
     let width = 1
     let height = 1
     let dpr = 1
+    let contentOffsetX = 0
+    let contentOffsetY = 0
+    let contentWidth = 1
+    let contentHeight = 1
 
     const resize = () => {
       const bounds = scene.getBoundingClientRect()
@@ -226,6 +292,18 @@ export function BlackHoleAccent() {
       canvas.style.width = `${width}px`
       canvas.style.height = `${height}px`
       context.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+      if (domLensEnabled) {
+        const contentBounds = storyContent!.getBoundingClientRect()
+        contentOffsetX = contentBounds.left - bounds.left
+        contentOffsetY = contentBounds.top - bounds.top
+        contentWidth = Math.max(1, contentBounds.width)
+        contentHeight = Math.max(1, contentBounds.height)
+        domLensFilter!.setAttribute("x", "-96")
+        domLensFilter!.setAttribute("y", "-96")
+        domLensFilter!.setAttribute("width", `${contentWidth + 192}`)
+        domLensFilter!.setAttribute("height", `${contentHeight + 192}`)
+      }
     }
 
     const paint = (now: number) => {
@@ -247,12 +325,31 @@ export function BlackHoleAccent() {
       }
       const holeSize = Math.min(230, Math.max(164, width * 0.19))
       const lensRadius = holeSize * 0.72
+      const domLensSize = lensRadius * 2.45
       const rotation = Math.sin((elapsed / LOOP_DURATION) * Math.PI * 2) * 3
       const scale =
         0.98 + Math.sin((elapsed / LOOP_DURATION) * Math.PI * 4) * 0.025
 
       accent.style.width = `${holeSize}px`
       accent.style.transform = `translate3d(${hole.x - holeSize / 2}px, ${hole.y - holeSize / 2}px, 0) rotate(${rotation}deg) scale(${scale})`
+      const horizonSize = holeSize * 0.285
+      horizon.style.width = `${horizonSize}px`
+      horizon.style.height = `${horizonSize * 0.94}px`
+      horizon.style.transform = `translate3d(${hole.x - horizonSize / 2}px, ${hole.y - horizonSize * 0.45}px, 0) rotate(${rotation}deg) scale(${scale})`
+
+      if (domLensEnabled) {
+        displacementImage!.setAttribute(
+          "x",
+          `${hole.x - contentOffsetX - domLensSize / 2}`
+        )
+        displacementImage!.setAttribute(
+          "y",
+          `${hole.y - contentOffsetY - domLensSize / 2}`
+        )
+        displacementImage!.setAttribute("width", `${domLensSize}`)
+        displacementImage!.setAttribute("height", `${domLensSize}`)
+        displacement!.setAttribute("scale", `${Math.min(54, holeSize * 0.24)}`)
+      }
 
       context.clearRect(0, 0, width, height)
       const glow = context.createRadialGradient(
@@ -346,6 +443,10 @@ export function BlackHoleAccent() {
       resizeObserver.disconnect()
       intersectionObserver.disconnect()
       scene.parentElement?.removeEventListener("pointermove", onPointerMove)
+      if (storyContent) {
+        storyContent.style.removeProperty("filter")
+        storyContent.style.removeProperty("will-change")
+      }
     }
   }, [enabled])
 
@@ -362,6 +463,42 @@ export function BlackHoleAccent() {
       data-testid="black-hole-wander-scene"
       ref={sceneRef}
     >
+      <svg
+        aria-hidden="true"
+        className="black-hole-filter-definitions"
+        focusable="false"
+      >
+        <defs>
+          <filter
+            colorInterpolationFilters="sRGB"
+            filterUnits="userSpaceOnUse"
+            id="black-hole-dom-lens"
+            primitiveUnits="userSpaceOnUse"
+            ref={domLensFilterRef}
+          >
+            <feFlood floodColor="#808080" result="neutral-map" />
+            <feImage
+              preserveAspectRatio="none"
+              ref={displacementImageRef}
+              result="radial-map"
+            />
+            <feComposite
+              in="radial-map"
+              in2="neutral-map"
+              operator="over"
+              result="combined-map"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="combined-map"
+              ref={displacementRef}
+              scale="48"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        </defs>
+      </svg>
       <canvas
         className="black-hole-lensing-field"
         data-testid="black-hole-lensing-field"
@@ -397,6 +534,11 @@ export function BlackHoleAccent() {
           />
         </Suspense>
       </div>
+      <div
+        className="black-hole-event-horizon"
+        data-testid="black-hole-event-horizon"
+        ref={horizonRef}
+      />
     </div>
   )
 }

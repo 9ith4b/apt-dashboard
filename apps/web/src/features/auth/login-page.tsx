@@ -61,69 +61,73 @@ export function LoginPage({
       <section className="login-story flex min-h-dvh flex-col px-10 py-8 xl:px-16 xl:py-10">
         <BlackHoleAccent />
 
-        <div className="relative z-10 flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
-            <RadarIcon aria-hidden="true" />
-          </span>
-          <span>
-            <span className="block text-sm font-semibold tracking-tight">
-              APT Hunter
+        <div className="login-story-content relative z-10 flex min-h-0 flex-1 flex-col">
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
+              <RadarIcon aria-hidden="true" />
             </span>
-            <span className="block text-[0.65rem] tracking-[0.14em] text-muted-foreground uppercase">
-              Threat Intelligence Desk
+            <span>
+              <span className="block text-sm font-semibold tracking-tight">
+                APT Hunter
+              </span>
+              <span className="block text-[0.65rem] tracking-[0.14em] text-muted-foreground uppercase">
+                Threat Intelligence Desk
+              </span>
             </span>
-          </span>
-        </div>
-
-        <div className="relative z-10 my-auto grid items-center gap-12 2xl:grid-cols-[minmax(0,1fr)_15rem]">
-          <div className="max-w-2xl">
-            <p className="workspace-kicker mb-5">持续威胁情报工作台</p>
-            <h1 className="max-w-2xl text-4xl leading-[1.08] font-semibold tracking-[-0.045em] text-balance xl:text-6xl">
-              把散落的信号，
-              <br />
-              <span className="text-muted-foreground">沉淀为可行动情报。</span>
-            </h1>
-            <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground xl:text-lg xl:leading-8">
-              聚合公开来源，持续追踪 APT
-              组织，并以钻石模型拆解攻击者、能力、基础设施与受害者关系。
-            </p>
           </div>
 
-          <div
-            aria-label="钻石模型关系示意"
-            className="relative mx-auto hidden size-56 place-items-center 2xl:grid"
-          >
-            <div className="login-diamond" />
-            <span className="absolute top-0 text-[0.65rem] tracking-wider text-muted-foreground uppercase">
-              攻击者
-            </span>
-            <span className="absolute right-0 text-[0.65rem] tracking-wider text-muted-foreground uppercase">
-              能力
-            </span>
-            <span className="absolute bottom-0 text-[0.65rem] tracking-wider text-muted-foreground uppercase">
-              受害者
-            </span>
-            <span className="absolute left-0 text-[0.65rem] tracking-wider text-muted-foreground uppercase">
-              基础设施
-            </span>
-            <span className="absolute size-2 rotate-45 bg-primary" />
-          </div>
-        </div>
-
-        <div className="relative z-10 max-w-3xl rounded-xl border border-border bg-card/70 px-5 backdrop-blur-sm">
-          {telemetry.map((item) => (
-            <div className="login-telemetry-row" key={item.label}>
-              <span className="flex items-center gap-2 text-xs font-medium">
-                <item.icon aria-hidden="true" />
-                {item.label}
-              </span>
-              <div className="login-trace" />
-              <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="size-1.5 rounded-full bg-confirmed" />
-                {item.value} · {item.status}
-              </span>
+          <div className="my-auto grid items-center gap-12 2xl:grid-cols-[minmax(0,1fr)_15rem]">
+            <div className="max-w-2xl">
+              <p className="workspace-kicker mb-5">持续威胁情报工作台</p>
+              <h1 className="max-w-2xl text-4xl leading-[1.08] font-semibold tracking-[-0.045em] text-balance xl:text-6xl">
+                把散落的信号，
+                <br />
+                <span className="text-muted-foreground">
+                  沉淀为可行动情报。
+                </span>
+              </h1>
+              <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground xl:text-lg xl:leading-8">
+                聚合公开来源，持续追踪 APT
+                组织，并以钻石模型拆解攻击者、能力、基础设施与受害者关系。
+              </p>
             </div>
-          ))}
+
+            <div
+              aria-label="钻石模型关系示意"
+              className="relative mx-auto hidden size-56 place-items-center 2xl:grid"
+            >
+              <div className="login-diamond" />
+              <span className="absolute top-0 text-[0.65rem] tracking-wider text-muted-foreground uppercase">
+                攻击者
+              </span>
+              <span className="absolute right-0 text-[0.65rem] tracking-wider text-muted-foreground uppercase">
+                能力
+              </span>
+              <span className="absolute bottom-0 text-[0.65rem] tracking-wider text-muted-foreground uppercase">
+                受害者
+              </span>
+              <span className="absolute left-0 text-[0.65rem] tracking-wider text-muted-foreground uppercase">
+                基础设施
+              </span>
+              <span className="absolute size-2 rotate-45 bg-primary" />
+            </div>
+          </div>
+
+          <div className="max-w-3xl rounded-xl border border-border bg-card/70 px-5 backdrop-blur-sm">
+            {telemetry.map((item) => (
+              <div className="login-telemetry-row" key={item.label}>
+                <span className="flex items-center gap-2 text-xs font-medium">
+                  <item.icon aria-hidden="true" />
+                  {item.label}
+                </span>
+                <div className="login-trace" />
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="size-1.5 rounded-full bg-confirmed" />
+                  {item.value} · {item.status}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -7,6 +7,7 @@
 - Implementation screenshot: `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-dark-production.png`
 - Motion-focused screenshot: `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-wander-final.jpg`
 - Wide-path screenshots: `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-wide-path-top.jpg` and `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-wide-path-bottom.jpg`
+- Interface-lens screenshots: `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-dom-lens-title.jpg` and `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-dom-lens-diamond.jpg`
 - Responsive screenshot: `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-mobile-production.png`
 - Viewport: 1440 x 900 CSS px, device scale factor 1
 - Pixel normalization: source 1440 x 900 px and implementation 1440 x 900 px; no resampling required
@@ -48,6 +49,14 @@
 - Fix: replaced the small harmonic orbit with an eight-point closed Catmull-Rom path spanning the upper-right, upper-left, lower-left, and lower-right portions of the story panel. The full loop is 120 seconds and remains smooth across the loop boundary.
 - Boundary evidence at 2048 x 1104: the story panel ends at x=1208.3. Four frozen route frames placed the accent at x/y 853.2/130.2, 172.3/80.3, 165.2/638.0, and 872.4/610.2; every rendered edge remained within x=0..1208.3 and y=0..1104, with no entry into the login panel.
 - Interaction evidence: a live 2.2-second sample moved 45.3 CSS px; light theme removed the scene and returning to dark remounted it. Browser console contained no warnings or errors.
+
+### Iteration 4 - interface-content gravitational lens
+
+- Finding: bending only the decorative stars and orbit traces made the moving object read as an overlay instead of a gravity well.
+- Fix: wrapped the complete story content in one compositing layer and applied a generated radial SVG displacement map centered on the live black-hole position. The logo, headline, support copy, diamond model, icons, labels, and telemetry now bend locally when the lens crosses them.
+- Event-horizon treatment: retained the stable screen-blended WebGL renderer and added a synchronized black occlusion disc above the displaced content, making the distortion and the dark center legible without changing the right-side login panel.
+- Visual evidence: frozen frame 3 bends the headline and support copy; frozen frame 7 bends the diamond edges and labels. Both effects remain inside the left story-panel boundary.
+- Runtime evidence: the accent moved 60.7 CSS px over 2.2 seconds at 2048 x 1104. Light theme removes both the filter and scene, dark theme restores them, and the browser console remains clean.
 
 ## Browser and interaction checks
 
