@@ -625,7 +625,7 @@ export function SourcesPage() {
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_24rem]">
-      <main className="flex min-w-0 flex-col gap-4 overflow-y-auto p-5">
+      <main className="workspace-page">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">采集连接器</h2>

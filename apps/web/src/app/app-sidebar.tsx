@@ -1,11 +1,10 @@
 import {
+  ActivityIcon,
   BellRingIcon,
-  BotIcon,
   CircleDotDashedIcon,
   DatabaseIcon,
   FileCheck2Icon,
   GitBranchIcon,
-  HouseIcon,
   ListTodoIcon,
   RadarIcon,
   SendIcon,
@@ -14,28 +13,28 @@ import {
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 
-import { useAuth } from "@/features/auth/auth-context"
-
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { useAuth } from "@/features/auth/auth-context"
 
 const navigation = [
-  { title: "情报流", url: "/feed", icon: BotIcon },
+  { title: "情报流", url: "/feed", icon: ActivityIcon },
   { title: "事件图谱", url: "/events", icon: GitBranchIcon },
   { title: "攻击者", url: "/actors", icon: ShieldUserIcon },
-  { title: "Campaign", url: "/campaigns", icon: SendIcon },
-  { title: "IOC", url: "/hunt", icon: CircleDotDashedIcon },
-  { title: "关注规则", url: "/watch-rules", icon: HouseIcon },
+  { title: "攻击活动", url: "/campaigns", icon: SendIcon },
+  { title: "IOC 狩猎", url: "/hunt", icon: CircleDotDashedIcon },
+  { title: "关注规则", url: "/watch-rules", icon: BellRingIcon },
   { title: "数据源", url: "/sources", icon: DatabaseIcon },
   { title: "待审核", url: "/reviews", icon: FileCheck2Icon },
   { title: "作业中心", url: "/operations", icon: ListTodoIcon },
@@ -53,20 +52,29 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
-      <SidebarHeader className="h-18 justify-center border-b border-sidebar-border px-4">
+      <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-3">
         <NavLink className="flex items-center gap-3" to="/feed">
-          <span className="flex size-8 items-center justify-center rounded-md bg-sidebar-primary/15 text-sidebar-primary">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-xs">
             <RadarIcon aria-hidden="true" />
           </span>
-          <span className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-            APT Hunter
+          <span className="min-w-0 group-data-[collapsible=icon]:hidden">
+            <span className="block truncate text-sm font-semibold tracking-tight">
+              APT Hunter
+            </span>
+            <span className="block truncate text-[0.65rem] tracking-[0.12em] text-sidebar-foreground/55 uppercase">
+              Intelligence Desk
+            </span>
           </span>
         </NavLink>
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarGroup className="px-2 py-4">
+          <SidebarGroupLabel className="px-2 text-[0.65rem] tracking-[0.12em] uppercase">
+            工作台
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="gap-1.5">
+            <SidebarMenu className="gap-1">
               {navigation
                 .filter((item) => !("adminOnly" in item) || auth.canAdmin)
                 .map((item) => {
@@ -91,19 +99,20 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter className="p-3">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              className="border border-sidebar-border"
-              size="lg"
-            >
-              <span className="size-2 rounded-full bg-confirmed" />
-              <span>4/4 基础服务就绪</span>
-              <BellRingIcon aria-hidden="true" />
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent/55 px-3 py-2.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <span className="relative flex size-2.5 shrink-0">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-confirmed opacity-35" />
+            <span className="relative inline-flex size-2.5 rounded-full bg-confirmed" />
+          </span>
+          <span className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+            <span className="block text-xs font-medium">系统运行正常</span>
+            <span className="block truncate text-[0.65rem] text-sidebar-foreground/55">
+              4/4 基础服务就绪
+            </span>
+          </span>
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

@@ -64,18 +64,20 @@ function Metric({
   note: string
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-4 border-r border-border px-5 py-5 last:border-r-0 sm:px-7">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
+    <div className="flex min-w-0 items-center gap-3 border-r border-border px-4 py-4 last:border-r-0 sm:px-6">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">
         <Icon aria-hidden="true" />
       </span>
       <span className="min-w-0">
         <span className="flex items-baseline gap-2">
-          <strong className="text-2xl font-semibold text-primary">
+          <strong className="text-2xl font-semibold tracking-tight">
             {value}
           </strong>
-          <span className="truncate font-medium">{label}</span>
+          <span className="truncate text-sm font-medium">{label}</span>
         </span>
-        <span className="text-sm text-muted-foreground">{note}</span>
+        <span className="block truncate text-xs text-muted-foreground">
+          {note}
+        </span>
       </span>
     </div>
   )
@@ -93,20 +95,21 @@ function FeedRow({
   return (
     <button
       className={cn(
-        "grid w-full grid-cols-[3rem_minmax(0,1fr)] items-center gap-3 border-b border-border px-4 py-4 text-left transition-colors last:border-b-0 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:grid-cols-[3rem_minmax(0,1fr)_12rem]",
-        selected && "bg-accent/55 ring-1 ring-primary ring-inset"
+        "relative grid w-full grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3 border-b border-border px-4 py-4 text-left transition-colors last:border-b-0 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:grid-cols-[2.75rem_minmax(0,1fr)_11rem]",
+        selected &&
+          "bg-accent/65 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-foreground"
       )}
       onClick={() => onSelect(report.id)}
       type="button"
     >
-      <span className="flex size-11 items-center justify-center rounded-xl bg-secondary text-primary">
+      <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground">
         <FileSearchIcon aria-hidden="true" />
       </span>
       <span className="flex min-w-0 flex-col gap-2">
-        <span className="line-clamp-2 text-base font-medium">
+        <span className="line-clamp-2 text-sm font-medium sm:text-base">
           {report.title}
         </span>
-        <span className="flex flex-wrap items-center gap-2">
+        <span className="flex flex-wrap items-center gap-1.5">
           <Badge variant={relevanceVariant(report.relevance_score)}>
             相关性 {report.relevance_score}
           </Badge>
@@ -117,17 +120,19 @@ function FeedRow({
             <Badge variant="confirmed">已确认</Badge>
           )}
         </span>
-        <span className="line-clamp-1 text-sm text-muted-foreground">
+        <span className="line-clamp-1 text-xs text-muted-foreground sm:text-sm">
           {report.relevance_reasons.join(" · ") || report.summary || "暂无摘要"}
         </span>
       </span>
-      <span className="col-start-2 flex min-w-0 items-start gap-3 self-start pt-1 lg:col-start-auto">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold">
+      <span className="col-start-2 flex min-w-0 items-start gap-2.5 self-start pt-1 lg:col-start-auto">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary text-[0.65rem] font-semibold">
           {sourceInitials(report.source_name)}
         </span>
-        <span className="flex min-w-0 flex-col gap-1">
-          <span className="truncate text-sm">{report.source_name}</span>
-          <span className="text-sm text-muted-foreground">
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate text-xs font-medium">
+            {report.source_name}
+          </span>
+          <span className="text-xs text-muted-foreground">
             {formatRelativeTime(report.published_at)}
           </span>
         </span>
@@ -144,9 +149,11 @@ function EntityPreview({
   items: DiamondEntity[]
 }) {
   return (
-    <div className="min-w-0 rounded-lg border border-border bg-background/45 p-3">
-      <span className="text-xs font-medium text-primary">{label}</span>
-      <p className="mt-1 truncate text-sm text-muted-foreground">
+    <div className="min-w-0 rounded-lg border border-border bg-background p-3">
+      <span className="text-[0.65rem] font-medium tracking-wide text-muted-foreground uppercase">
+        {label}
+      </span>
+      <p className="mt-1 truncate text-sm font-medium">
         {items[0]?.name ?? "未提取到"}
       </p>
     </div>
@@ -158,9 +165,10 @@ function EventInspector({ report }: { report: ReportDetail | undefined }) {
   return (
     <aside className="hidden min-w-0 border-l border-border bg-card xl:flex xl:flex-col">
       <div className="px-5 py-4">
-        <h2 className="text-lg font-semibold">材料速览</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          自动提取结果仅供研判，审核后生效
+        <p className="workspace-kicker">Inspector</p>
+        <h2 className="mt-1 text-lg font-semibold">材料速览</h2>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          自动提取仅供研判，审核后生效
         </p>
       </div>
       <Separator />
@@ -173,8 +181,10 @@ function EventInspector({ report }: { report: ReportDetail | undefined }) {
       ) : (
         <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-5">
           <div>
-            <h3 className="text-lg leading-7 font-semibold">{report.title}</h3>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <h3 className="text-base leading-6 font-semibold">
+              {report.title}
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-1.5">
               <Badge variant={relevanceVariant(report.relevance_score)}>
                 相关性 {report.relevance_score}
               </Badge>
@@ -184,22 +194,22 @@ function EventInspector({ report }: { report: ReportDetail | undefined }) {
               {analysis?.confidence_auto !== null &&
                 analysis?.confidence_auto !== undefined && (
                   <Badge variant="outline">
-                    提取置信度 {analysis.confidence_auto}
+                    置信度 {analysis.confidence_auto}
                   </Badge>
                 )}
             </div>
           </div>
           <section className="space-y-2">
-            <h4 className="font-medium">材料摘要</h4>
+            <h4 className="text-sm font-medium">材料摘要</h4>
             <p className="line-clamp-6 text-sm leading-6 text-muted-foreground">
               {analysis?.content_text || report.summary || "正文仍在等待提取。"}
             </p>
           </section>
           <section className="space-y-3">
-            <h4 className="font-medium">威胁钻石模型</h4>
+            <h4 className="text-sm font-medium">威胁钻石模型</h4>
             {analysis?.extraction_status === "ready" ? (
               <div className="grid grid-cols-2 gap-2">
-                <EntityPreview label="对手" items={analysis.actors} />
+                <EntityPreview label="攻击者" items={analysis.actors} />
                 <EntityPreview label="能力" items={analysis.capabilities} />
                 <EntityPreview
                   label="基础设施"
@@ -215,13 +225,15 @@ function EventInspector({ report }: { report: ReportDetail | undefined }) {
           </section>
           <Separator />
           <section className="space-y-3">
-            <h4 className="font-medium">可追溯证据</h4>
+            <h4 className="text-sm font-medium">可追溯证据</h4>
             {analysis?.evidence.length ? (
               <ul className="space-y-2 text-sm text-muted-foreground">
                 {analysis.evidence.slice(0, 4).map((item, index) => (
                   <li className="line-clamp-2" key={`${item.entity}-${index}`}>
-                    <span className="text-foreground">{item.entity}</span> ·{" "}
-                    {item.quote}
+                    <span className="font-medium text-foreground">
+                      {item.entity}
+                    </span>{" "}
+                    · {item.quote}
                   </li>
                 ))}
               </ul>
@@ -306,24 +318,25 @@ export function IntelligenceFeedPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <section className="grid shrink-0 grid-cols-2 border-b border-border lg:grid-cols-4">
+      <section className="grid shrink-0 grid-cols-2 border-b border-border bg-surface lg:grid-cols-4">
         {metrics.map((metric) => (
           <Metric key={metric.label} {...metric} />
         ))}
       </section>
-      <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_26rem]">
-        <main className="flex min-w-0 flex-col px-4 py-4 sm:px-5">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_27rem]">
+        <main className="flex min-w-0 flex-col overflow-hidden p-4 sm:p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-4">
-              <h2 className="text-lg font-semibold">APT 候选材料</h2>
+              <div>
+                <p className="workspace-kicker">Live intelligence</p>
+                <h2 className="mt-1 text-lg font-semibold">APT 候选材料</h2>
+              </div>
               <ToggleGroup
                 type="single"
                 value={filter}
                 variant="outline"
                 spacing={0}
-                onValueChange={(value) => {
-                  if (value) setFilter(value)
-                }}
+                onValueChange={(value) => value && setFilter(value)}
               >
                 <ToggleGroupItem value="all">全部</ToggleGroupItem>
                 <ToggleGroupItem value="high">高相关</ToggleGroupItem>
@@ -335,7 +348,7 @@ export function IntelligenceFeedPage() {
               最新优先
             </Button>
           </div>
-          <div className="min-h-0 overflow-y-auto rounded-lg border border-border bg-card">
+          <div className="min-h-0 overflow-y-auto rounded-xl border border-border bg-card">
             {reportsQuery.isPending ? (
               <div className="space-y-3 p-4">
                 {[0, 1, 2].map((item) => (

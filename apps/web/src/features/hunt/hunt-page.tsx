@@ -640,7 +640,7 @@ export function HuntPage() {
 
   return (
     <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]">
-      <header className="border-b border-border bg-card px-4 py-4 sm:px-6">
+      <header className="border-b border-border bg-surface px-4 py-4 sm:px-6">
         <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
           <div>
             <div className="flex items-center gap-2">

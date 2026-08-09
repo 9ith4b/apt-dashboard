@@ -293,7 +293,7 @@ export function WatchRulesPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex flex-col justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:flex-row sm:items-center sm:px-6">
+      <header className="flex flex-col justify-between gap-4 border-b border-border bg-surface px-4 py-4 sm:flex-row sm:items-center sm:px-6">
         <div>
           <div className="flex items-center gap-2">
             <RadarIcon className="size-5 text-primary" />
@@ -364,9 +364,9 @@ export function WatchRulesPage() {
             {rules.map((rule) => (
               <button
                 className={cn(
-                  "w-full border-b border-border p-4 text-left hover:bg-accent/40",
+                  "relative w-full border-b border-border p-4 text-left transition-colors hover:bg-accent/40",
                   selected?.id === rule.id &&
-                    "bg-accent/55 ring-1 ring-primary ring-inset"
+                    "bg-accent/65 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-foreground"
                 )}
                 key={rule.id}
                 onClick={() => {

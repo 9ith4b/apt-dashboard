@@ -649,7 +649,7 @@ export function EventsPage() {
 
   return (
     <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(0,1fr)]">
-      <header className="border-b border-border bg-card px-4 py-4 sm:px-6">
+      <header className="border-b border-border bg-surface px-4 py-4 sm:px-6">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <div>
             <h1 className="text-xl font-semibold">威胁事件</h1>

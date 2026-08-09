@@ -99,7 +99,7 @@ export function OperationsPage() {
   const successCount = jobs.filter((job) => job.status === "succeeded").length
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
+    <div className="workspace-page">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <div className="flex items-center gap-2">
