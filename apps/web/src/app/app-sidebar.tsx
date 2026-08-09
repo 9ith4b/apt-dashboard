@@ -87,7 +87,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" id="app-sidebar-navigation" variant="sidebar">
       <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-3 group-data-[collapsible=icon]:px-1.5">
         <NavLink
-          aria-label="APT Hunter · 情报流"
+          aria-label="APT Hunter 首页"
           className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center"
           to="/feed"
         >
