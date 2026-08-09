@@ -61,6 +61,7 @@ function SidebarCollapseButton() {
           aria-controls="app-sidebar-navigation"
           aria-expanded={!isCollapsed}
           aria-label={label}
+          className="group-data-[collapsible=icon]:justify-center"
           onClick={toggleSidebar}
           size="lg"
           tooltip={label}
@@ -71,7 +72,7 @@ function SidebarCollapseButton() {
           ) : (
             <PanelLeftCloseIcon aria-hidden="true" />
           )}
-          <span>{label}</span>
+          <span className="group-data-[collapsible=icon]:hidden">{label}</span>
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>
@@ -84,8 +85,12 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" id="app-sidebar-navigation" variant="sidebar">
-      <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-3">
-        <NavLink className="flex items-center gap-3" to="/feed">
+      <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-3 group-data-[collapsible=icon]:px-1.5">
+        <NavLink
+          aria-label="APT Hunter · 情报流"
+          className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center"
+          to="/feed"
+        >
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-xs">
             <RadarIcon aria-hidden="true" />
           </span>
@@ -115,13 +120,16 @@ export function AppSidebar() {
                     <SidebarMenuItem key={item.url}>
                       <SidebarMenuButton
                         asChild
+                        className="group-data-[collapsible=icon]:justify-center"
                         isActive={isActive}
                         size="lg"
                         tooltip={item.title}
                       >
-                        <NavLink to={item.url}>
+                        <NavLink aria-label={item.title} to={item.url}>
                           <item.icon aria-hidden="true" />
-                          <span>{item.title}</span>
+                          <span className="group-data-[collapsible=icon]:hidden">
+                            {item.title}
+                          </span>
                         </NavLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -132,7 +140,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="gap-2 p-3">
+      <SidebarFooter className="gap-2 p-3 group-data-[collapsible=icon]:p-2">
         <SidebarCollapseButton />
         <div className="flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent/55 px-3 py-2.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <span className="relative flex size-2.5 shrink-0">
