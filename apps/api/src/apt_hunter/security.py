@@ -28,7 +28,7 @@ def _expected_origin(request: Request) -> str:
 
 def _required_role(request: Request, api_prefix: str) -> str:
     relative = request.url.path.removeprefix(api_prefix).strip("/")
-    if relative.startswith("audit-logs") or relative.startswith("auth/users"):
+    if relative.startswith(("audit-logs", "auth/users", "ai")):
         return "admin"
     if request.method in SAFE_METHODS:
         return "viewer"

@@ -54,6 +54,10 @@ def secure_client(
 
     monkeypatch.setenv("APT_HUNTER_AUTH_ENABLED", "true")
     monkeypatch.setenv("APT_HUNTER_SESSION_SECURE_COOKIE", "false")
+    monkeypatch.setenv(
+        "APT_HUNTER_AI_SECRETS_KEY",
+        "test-secret-key-with-more-than-thirty-two-characters",
+    )
     get_settings.cache_clear()
     monkeypatch.setattr("apt_hunter.security.SessionLocal", testing_session)
     monkeypatch.setattr(auth_routes, "_rate_count", lambda *_: 0)
@@ -135,6 +139,33 @@ def test_viewer_can_read_but_cannot_modify(
     )
     assert denied.status_code == 403
     assert client.get("/api/v1/audit-logs").status_code == 403
+    assert client.get("/api/v1/ai/configs").status_code == 403
+
+
+def test_admin_can_store_model_config_without_exposing_api_key(
+    secure_client: tuple[TestClient, sessionmaker[Session]],
+) -> None:
+    client, _ = secure_client
+    csrf = _login(client, "admin", "correct horse battery staple")
+    created = client.post(
+        "/api/v1/ai/configs",
+        headers={"Origin": ORIGIN, "X-CSRF-Token": csrf},
+        json={
+            "name": "Primary analyst",
+            "provider": "openai",
+            "base_url": "https://api.openai.com/v1",
+            "model": "gpt-5-mini",
+            "api_key": "sk-sensitive-value",
+            "is_default": True,
+        },
+    )
+
+    assert created.status_code == 201
+    assert created.json()["has_api_key"] is True
+    assert "api_key" not in created.json()
+    listed = client.get("/api/v1/ai/configs")
+    assert listed.status_code == 200
+    assert "sk-sensitive-value" not in listed.text
 
 
 def test_login_rejects_missing_origin_and_uses_generic_failure(

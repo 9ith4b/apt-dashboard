@@ -7,6 +7,12 @@ from apt_hunter.config import get_settings
 from apt_hunter.db.session import SessionLocal
 from apt_hunter.models import Report, ReportAnalysis
 from apt_hunter.services.article import ArticleDocument, fetch_article
+from apt_hunter.services.automation import (
+    AutomationOutcome,
+    apply_automation_decision,
+    automation_enabled,
+    run_ai_automation,
+)
 from apt_hunter.services.diamond import extract_diamond
 from apt_hunter.services.knowledge import persist_report_knowledge
 
@@ -41,6 +47,8 @@ def analyze_report(
             analysis = ReportAnalysis(report_id=report_id)
             session.add(analysis)
         analysis.extraction_status = "processing"
+        ai_enabled = automation_enabled(session)
+        analysis.automation_status = "processing" if ai_enabled else "not_configured"
         analysis.extraction_error = None
         article_url = report.canonical_url
         report_title = report.title
@@ -54,6 +62,15 @@ def analyze_report(
             max_bytes=settings.article_max_bytes,
         )
         diamond = extract_diamond(report_title, article.text, publisher_url=article.final_url)
+        if ai_enabled:
+            outcome, evidence = run_ai_automation(
+                report_id=report_id,
+                title=report_title,
+                content=article.text,
+                deterministic=diamond,
+            )
+        else:
+            outcome, evidence = AutomationOutcome(), diamond.evidence
         with SessionLocal() as session:
             report = session.get(Report, report_id)
             analysis = session.get(ReportAnalysis, report_id)
@@ -66,29 +83,49 @@ def analyze_report(
             analysis.fetched_at = datetime.now(UTC)
             analysis.extraction_status = "ready"
             analysis.extraction_error = None
-            analysis.actors = diamond.actors
-            analysis.capabilities = diamond.capabilities
-            analysis.infrastructure = diamond.infrastructure
-            analysis.victims = diamond.victims
-            analysis.evidence = diamond.evidence
+            analysis.actors = outcome.actors or diamond.actors
+            analysis.capabilities = outcome.capabilities or diamond.capabilities
+            analysis.infrastructure = outcome.infrastructure or diamond.infrastructure
+            analysis.victims = outcome.victims or diamond.victims
+            analysis.evidence = evidence
             analysis.observables = diamond.observables
-            analysis.attack_techniques = diamond.attack_techniques
-            analysis.confidence_auto = diamond.confidence
-            analysis.method_version = "rules-v2"
+            analysis.attack_techniques = outcome.attack_techniques or diamond.attack_techniques
+            analysis.confidence_auto = outcome.confidence or diamond.confidence
+            analysis.method_version = outcome.method_version
+            analysis.automation_status = outcome.automation_status
+            analysis.ai_relevance_score = outcome.relevance_score
+            analysis.ai_classification = outcome.classification
+            analysis.ai_summary = outcome.summary
+            analysis.ai_claims = outcome.claims
+            analysis.ai_verification = outcome.verification
+            analysis.evidence_coverage = outcome.evidence_coverage
+            analysis.decision_reason = outcome.decision_reason
+            analysis.model_config_id = outcome.model_config_id
             report.language = detect_language(article.text)
+            if outcome.relevance_score is not None:
+                report.relevance_score = outcome.relevance_score
+            report.status = outcome.report_status
             persist_report_knowledge(
                 session,
                 report_id=report_id,
                 observed_at=report.published_at or report.created_at,
                 observables=diamond.observables,
-                techniques=diamond.attack_techniques,
-                method_version="rules-v2",
+                techniques=analysis.attack_techniques,
+                method_version=analysis.method_version,
+            )
+            session.flush()
+            apply_automation_decision(
+                session,
+                report=report,
+                analysis=analysis,
+                outcome=outcome,
             )
             session.commit()
         return {
             "report_id": str(report_id),
             "status": "ready",
-            "confidence": diamond.confidence,
+            "confidence": outcome.confidence or diamond.confidence,
+            "automation_status": outcome.automation_status,
         }
     except Exception as exc:
         with SessionLocal() as session:

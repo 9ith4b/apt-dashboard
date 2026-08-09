@@ -65,10 +65,19 @@ import {
 import { cn } from "@/lib/utils"
 
 const REVIEW_LABELS = {
-  pending: "待审核",
+  pending: "待研判",
   approved: "已通过",
   rejected: "已驳回",
 } as const
+
+const AUTOMATION_LABELS: Record<string, string> = {
+  not_configured: "规则降级",
+  processing: "AI处理中",
+  auto_approved: "AI自动确认",
+  needs_review: "需要异常研判",
+  auto_rejected: "AI自动排除",
+  fallback: "AI安全降级",
+}
 
 function QueueRow({
   report,
@@ -273,6 +282,17 @@ function ReviewWorkbench({
                 自动置信度 {analysis.confidence_auto ?? "—"}
               </Badge>
               <Badge variant="secondary">{analysis.method_version}</Badge>
+              <Badge
+                variant={
+                  analysis.automation_status === "needs_review" ||
+                  analysis.automation_status === "fallback"
+                    ? "destructive"
+                    : "outline"
+                }
+              >
+                {AUTOMATION_LABELS[analysis.automation_status] ??
+                  analysis.automation_status}
+              </Badge>
             </div>
             <h2 className="text-xl leading-8 font-semibold sm:text-2xl">
               {report.title}
@@ -289,6 +309,19 @@ function ReviewWorkbench({
             </a>
           </Button>
         </div>
+
+        {analysis.decision_reason ? (
+          <Alert>
+            <SparklesIcon />
+            <AlertTitle>AI 决策说明</AlertTitle>
+            <AlertDescription>
+              {analysis.decision_reason}
+              {analysis.evidence_coverage !== null
+                ? `（证据覆盖率 ${analysis.evidence_coverage}%）`
+                : ""}
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         <section>
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -529,9 +562,9 @@ export function ReviewsPage() {
       <aside className="flex min-h-0 flex-col border-b border-border bg-card lg:border-r lg:border-b-0">
         <div className="space-y-3 p-4">
           <div>
-            <h2 className="font-semibold">人工复核队列</h2>
+            <h2 className="font-semibold">异常研判队列</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              核对正文证据后再沉淀为可信情报
+              仅处理AI证据不足、归因冲突和低置信度材料
             </p>
           </div>
           <div
@@ -583,7 +616,7 @@ export function ReviewsPage() {
                 </EmptyMedia>
                 <EmptyTitle>{REVIEW_LABELS[reviewStatus]}列表为空</EmptyTitle>
                 <EmptyDescription>
-                  自动富化完成的候选材料会进入待审核列表。
+                  AI自动化无法安全决策的材料会进入此列表。
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>

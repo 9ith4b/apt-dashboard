@@ -1,6 +1,6 @@
 # APT Hunter
 
-APT Hunter 是一套独立的 APT 威胁情报采集、分析、审核、狩猎与持续跟踪平台。系统从 RSS、公开网页、X 和 Telegram 收集信息，将多篇报道归并为去重攻击事件，并按照攻击钻石模型组织攻击者、能力、基础设施和受害目标。所有自动结论保留原文证据，重要结果经人工审核后才进入知识库。
+APT Hunter 是一套独立的 AI-first APT 威胁情报采集、分析、狩猎与持续跟踪平台。系统从 RSS、公开网页、X 和 Telegram 收集信息，以可配置大模型完成全量语义分析、证据验证和分级自动决策，将多篇报道归并为去重攻击事件，并按照攻击钻石模型组织攻击者、能力、基础设施和受害目标。人工只处理证据不足、归因冲突和低置信度异常。
 
 ## 当前版本
 
@@ -8,6 +8,7 @@ APT Hunter 是一套独立的 APT 威胁情报采集、分析、审核、狩猎�
 
 - RSS、公开 Web、X API v2、Telegram Bot API 四类采集连接器
 - APT 相关性筛选、正文抽取、去重、钻石模型、Observable 与 ATT&CK 提取
+- 可配置 OpenAI 兼容大模型、加密凭据、独立 AI 验证、决策门禁与安全降级
 - 人工审核、版本化威胁事件、相似事件聚类、合并/驳回/撤销
 - 威胁组织持续跟踪，支持月、年、全部和自定义日期，含周期对比及 JSON/CSV 导出
 - Observable 检索、本地富化、人工提升 Indicator，以及 Campaign 时间线
@@ -69,4 +70,4 @@ docker compose up -d --build
 ./scripts/e2e-live.sh
 ```
 
-详细状态见 [1.0.0 发布说明](./docs/m12-status.md)、[交付完成矩阵](./docs/completion-matrix.md)、[运维与发布手册](./docs/operations-runbook.md) 和 [OpenAPI 契约](./docs/api-contract.md)。
+详细状态见 [AI 自动化说明](./docs/ai-automation.md)、[1.0.0 发布说明](./docs/m12-status.md)、[交付完成矩阵](./docs/completion-matrix.md)、[运维与发布手册](./docs/operations-runbook.md) 和 [OpenAPI 契约](./docs/api-contract.md)。

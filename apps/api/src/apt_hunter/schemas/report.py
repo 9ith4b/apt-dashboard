@@ -51,6 +51,15 @@ class AnalysisRead(BaseModel):
     reviewed_victims: list[DiamondEntity] | None
     confidence_auto: int | None
     method_version: str
+    automation_status: str
+    ai_relevance_score: int | None
+    ai_classification: str | None
+    ai_summary: str | None
+    ai_claims: list[dict[str, object]]
+    ai_verification: dict[str, object]
+    evidence_coverage: int | None
+    decision_reason: str | None
+    model_config_id: UUID | None
     analyst_note: str | None
     reviewed_at: datetime | None
     reviewed_by: str | None

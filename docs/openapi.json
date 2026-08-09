@@ -1,6 +1,491 @@
 {
   "components": {
     "schemas": {
+      "AIModelConfigCreate": {
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "base_url": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "title": "Base Url",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "is_default": {
+            "default": false,
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "model": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "openai",
+              "deepseek",
+              "dashscope",
+              "siliconflow",
+              "ollama",
+              "custom"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "temperature": {
+            "default": 0.1,
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Temperature",
+            "type": "number"
+          },
+          "timeout_seconds": {
+            "default": 90,
+            "maximum": 300.0,
+            "minimum": 5.0,
+            "title": "Timeout Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "provider",
+          "base_url",
+          "model"
+        ],
+        "title": "AIModelConfigCreate",
+        "type": "object"
+      },
+      "AIModelConfigRead": {
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "has_api_key": {
+            "title": "Has Api Key",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "last_test_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Test Error"
+          },
+          "last_test_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Test Status"
+          },
+          "last_tested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Tested At"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "openai",
+              "deepseek",
+              "dashscope",
+              "siliconflow",
+              "ollama",
+              "custom"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "temperature": {
+            "title": "Temperature",
+            "type": "number"
+          },
+          "timeout_seconds": {
+            "title": "Timeout Seconds",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by": {
+            "title": "Updated By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "base_url",
+          "model",
+          "has_api_key",
+          "enabled",
+          "is_default",
+          "timeout_seconds",
+          "temperature",
+          "updated_by",
+          "last_test_status",
+          "last_test_error",
+          "last_tested_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AIModelConfigRead",
+        "type": "object"
+      },
+      "AIModelConfigUpdate": {
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "clear_api_key": {
+            "default": false,
+            "title": "Clear Api Key",
+            "type": "boolean"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "enum": [
+                  "openai",
+                  "deepseek",
+                  "dashscope",
+                  "siliconflow",
+                  "ollama",
+                  "custom"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "timeout_seconds": {
+            "anyOf": [
+              {
+                "maximum": 300.0,
+                "minimum": 5.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout Seconds"
+          }
+        },
+        "title": "AIModelConfigUpdate",
+        "type": "object"
+      },
+      "AIModelTestRead": {
+        "properties": {
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "message",
+          "latency_ms",
+          "model"
+        ],
+        "title": "AIModelTestRead",
+        "type": "object"
+      },
+      "AIProcessingPolicyRead": {
+        "properties": {
+          "auto_approve_threshold": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Auto Approve Threshold",
+            "type": "integer"
+          },
+          "auto_create_events": {
+            "default": true,
+            "title": "Auto Create Events",
+            "type": "boolean"
+          },
+          "auto_reject_threshold": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Auto Reject Threshold",
+            "type": "integer"
+          },
+          "automation_enabled": {
+            "title": "Automation Enabled",
+            "type": "boolean"
+          },
+          "max_article_chars": {
+            "maximum": 200000.0,
+            "minimum": 5000.0,
+            "title": "Max Article Chars",
+            "type": "integer"
+          },
+          "minimum_evidence_coverage": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Minimum Evidence Coverage",
+            "type": "integer"
+          },
+          "relevance_threshold": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Relevance Threshold",
+            "type": "integer"
+          },
+          "require_verification": {
+            "default": true,
+            "title": "Require Verification",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by": {
+            "title": "Updated By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "automation_enabled",
+          "relevance_threshold",
+          "auto_approve_threshold",
+          "auto_reject_threshold",
+          "minimum_evidence_coverage",
+          "max_article_chars",
+          "updated_by",
+          "updated_at"
+        ],
+        "title": "AIProcessingPolicyRead",
+        "type": "object"
+      },
+      "AIProcessingPolicyUpdate": {
+        "properties": {
+          "auto_approve_threshold": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Auto Approve Threshold",
+            "type": "integer"
+          },
+          "auto_create_events": {
+            "default": true,
+            "title": "Auto Create Events",
+            "type": "boolean"
+          },
+          "auto_reject_threshold": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Auto Reject Threshold",
+            "type": "integer"
+          },
+          "automation_enabled": {
+            "title": "Automation Enabled",
+            "type": "boolean"
+          },
+          "max_article_chars": {
+            "maximum": 200000.0,
+            "minimum": 5000.0,
+            "title": "Max Article Chars",
+            "type": "integer"
+          },
+          "minimum_evidence_coverage": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Minimum Evidence Coverage",
+            "type": "integer"
+          },
+          "relevance_threshold": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Relevance Threshold",
+            "type": "integer"
+          },
+          "require_verification": {
+            "default": true,
+            "title": "Require Verification",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "automation_enabled",
+          "relevance_threshold",
+          "auto_approve_threshold",
+          "auto_reject_threshold",
+          "minimum_evidence_coverage",
+          "max_article_chars"
+        ],
+        "title": "AIProcessingPolicyUpdate",
+        "type": "object"
+      },
       "ActorEventRead": {
         "properties": {
           "confidence": {
@@ -364,6 +849,52 @@
             "title": "Actors",
             "type": "array"
           },
+          "ai_claims": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Ai Claims",
+            "type": "array"
+          },
+          "ai_classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Classification"
+          },
+          "ai_relevance_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Relevance Score"
+          },
+          "ai_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Summary"
+          },
+          "ai_verification": {
+            "additionalProperties": true,
+            "title": "Ai Verification",
+            "type": "object"
+          },
           "analyst_note": {
             "anyOf": [
               {
@@ -382,6 +913,10 @@
             },
             "title": "Attack Techniques",
             "type": "array"
+          },
+          "automation_status": {
+            "title": "Automation Status",
+            "type": "string"
           },
           "capabilities": {
             "items": {
@@ -416,6 +951,17 @@
             ],
             "title": "Content Type"
           },
+          "decision_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Reason"
+          },
           "evidence": {
             "items": {
               "additionalProperties": true,
@@ -423,6 +969,17 @@
             },
             "title": "Evidence",
             "type": "array"
+          },
+          "evidence_coverage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Coverage"
           },
           "extraction_error": {
             "anyOf": [
@@ -472,6 +1029,18 @@
           "method_version": {
             "title": "Method Version",
             "type": "string"
+          },
+          "model_config_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Config Id"
           },
           "observables": {
             "items": {
@@ -602,6 +1171,15 @@
           "reviewed_victims",
           "confidence_auto",
           "method_version",
+          "automation_status",
+          "ai_relevance_score",
+          "ai_classification",
+          "ai_summary",
+          "ai_claims",
+          "ai_verification",
+          "evidence_coverage",
+          "decision_reason",
+          "model_config_id",
           "analyst_note",
           "reviewed_at",
           "reviewed_by",
@@ -785,6 +1363,235 @@
           "expires_at"
         ],
         "title": "AuthSessionRead",
+        "type": "object"
+      },
+      "AutomationExceptionDecision": {
+        "properties": {
+          "resolved_by": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Resolved By",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "resolved",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "resolved_by"
+        ],
+        "title": "AutomationExceptionDecision",
+        "type": "object"
+      },
+      "AutomationExceptionRead": {
+        "properties": {
+          "assigned_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "exception_type": {
+            "title": "Exception Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "report_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Title"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "resolved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved By"
+          },
+          "severity": {
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "report_id",
+          "report_title",
+          "exception_type",
+          "severity",
+          "status",
+          "title",
+          "description",
+          "details",
+          "assigned_to",
+          "resolved_by",
+          "resolved_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AutomationExceptionRead",
+        "type": "object"
+      },
+      "AutomationStatusRead": {
+        "properties": {
+          "active_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Model"
+          },
+          "active_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Model Name"
+          },
+          "auto_approved_24h": {
+            "title": "Auto Approved 24H",
+            "type": "integer"
+          },
+          "automation_enabled": {
+            "title": "Automation Enabled",
+            "type": "boolean"
+          },
+          "failed_24h": {
+            "title": "Failed 24H",
+            "type": "integer"
+          },
+          "needs_review_24h": {
+            "title": "Needs Review 24H",
+            "type": "integer"
+          },
+          "open_exceptions": {
+            "title": "Open Exceptions",
+            "type": "integer"
+          },
+          "processed_24h": {
+            "title": "Processed 24H",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "automation_enabled",
+          "active_model_name",
+          "active_model",
+          "open_exceptions",
+          "processed_24h",
+          "auto_approved_24h",
+          "needs_review_24h",
+          "failed_24h"
+        ],
+        "title": "AutomationStatusRead",
+        "type": "object"
+      },
+      "BackfillRead": {
+        "properties": {
+          "promoted": {
+            "title": "Promoted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "promoted"
+        ],
+        "title": "BackfillRead",
         "type": "object"
       },
       "CampaignCreate": {
@@ -4890,6 +5697,419 @@
         "summary": "Generate Actor Tracking Summary",
         "tags": [
           "actors"
+        ]
+      }
+    },
+    "/api/v1/ai/backfill": {
+      "post": {
+        "operationId": "backfill_filtered_reports_api_v1_ai_backfill_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackfillRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Backfill Filtered Reports",
+        "tags": [
+          "ai-automation"
+        ]
+      }
+    },
+    "/api/v1/ai/configs": {
+      "get": {
+        "operationId": "list_model_configs_api_v1_ai_configs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AIModelConfigRead"
+                  },
+                  "title": "Response List Model Configs Api V1 Ai Configs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Model Configs",
+        "tags": [
+          "ai-automation"
+        ]
+      },
+      "post": {
+        "operationId": "create_model_config_api_v1_ai_configs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIModelConfigCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIModelConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Model Config",
+        "tags": [
+          "ai-automation"
+        ]
+      }
+    },
+    "/api/v1/ai/configs/{config_id}": {
+      "delete": {
+        "operationId": "delete_model_config_api_v1_ai_configs__config_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "config_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Config Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Model Config",
+        "tags": [
+          "ai-automation"
+        ]
+      },
+      "patch": {
+        "operationId": "update_model_config_api_v1_ai_configs__config_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "config_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Config Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIModelConfigUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIModelConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Model Config",
+        "tags": [
+          "ai-automation"
+        ]
+      }
+    },
+    "/api/v1/ai/configs/{config_id}/test": {
+      "post": {
+        "operationId": "test_config_api_v1_ai_configs__config_id__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "config_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Config Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIModelTestRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Config",
+        "tags": [
+          "ai-automation"
+        ]
+      }
+    },
+    "/api/v1/ai/exceptions": {
+      "get": {
+        "operationId": "list_exceptions_api_v1_ai_exceptions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "exception_status",
+            "required": false,
+            "schema": {
+              "default": "open",
+              "enum": [
+                "open",
+                "resolved",
+                "dismissed"
+              ],
+              "title": "Exception Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationExceptionRead"
+                  },
+                  "title": "Response List Exceptions Api V1 Ai Exceptions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Exceptions",
+        "tags": [
+          "ai-automation"
+        ]
+      }
+    },
+    "/api/v1/ai/exceptions/{exception_id}/decision": {
+      "post": {
+        "operationId": "decide_exception_api_v1_ai_exceptions__exception_id__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationExceptionDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationExceptionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide Exception",
+        "tags": [
+          "ai-automation"
+        ]
+      }
+    },
+    "/api/v1/ai/policy": {
+      "get": {
+        "operationId": "get_policy_api_v1_ai_policy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIProcessingPolicyRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Policy",
+        "tags": [
+          "ai-automation"
+        ]
+      },
+      "put": {
+        "operationId": "update_policy_api_v1_ai_policy_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIProcessingPolicyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIProcessingPolicyRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Policy",
+        "tags": [
+          "ai-automation"
+        ]
+      }
+    },
+    "/api/v1/ai/status": {
+      "get": {
+        "operationId": "automation_status_api_v1_ai_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationStatusRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Automation Status",
+        "tags": [
+          "ai-automation"
         ]
       }
     },

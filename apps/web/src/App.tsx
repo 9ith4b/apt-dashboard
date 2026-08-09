@@ -50,6 +50,11 @@ const SecurityPage = lazy(() =>
     default: module.SecurityPage,
   }))
 )
+const AutomationPage = lazy(() =>
+  import("@/features/automation/automation-page").then((module) => ({
+    default: module.AutomationPage,
+  }))
+)
 
 function PageFallback() {
   return (
@@ -137,6 +142,14 @@ export function App() {
                     element={
                       <Suspense fallback={<PageFallback />}>
                         <OperationsPage />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/automation"
+                    element={
+                      <Suspense fallback={<PageFallback />}>
+                        <AutomationPage />
                       </Suspense>
                     }
                   />

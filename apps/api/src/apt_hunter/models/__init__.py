@@ -1,7 +1,11 @@
 from apt_hunter.models.intelligence import (
+    AIAnalysisRun,
+    AIModelConfig,
+    AIProcessingPolicy,
     AnalysisRevision,
     AttackTechnique,
     AuditLog,
+    AutomationException,
     Campaign,
     CampaignEvent,
     EventActor,
@@ -32,7 +36,11 @@ from apt_hunter.models.intelligence import (
 
 __all__ = [
     "AnalysisRevision",
+    "AIAnalysisRun",
+    "AIModelConfig",
+    "AIProcessingPolicy",
     "AuditLog",
+    "AutomationException",
     "AttackTechnique",
     "Campaign",
     "CampaignEvent",

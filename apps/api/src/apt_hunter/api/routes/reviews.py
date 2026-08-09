@@ -10,6 +10,7 @@ from apt_hunter.api.routes.reports import _analysis_read, _report_row, _summary
 from apt_hunter.db.session import get_db
 from apt_hunter.models import (
     AnalysisRevision,
+    AutomationException,
     EventReport,
     Report,
     ReportAnalysis,
@@ -144,6 +145,18 @@ def decide_review(
         session.rollback()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     report.status = payload.decision
+    session.execute(
+        update(AutomationException)
+        .where(
+            AutomationException.report_id == report_id,
+            AutomationException.status == "open",
+        )
+        .values(
+            status="resolved",
+            resolved_by=payload.reviewed_by,
+            resolved_at=datetime.now(UTC),
+        )
+    )
 
     snapshot: dict[str, object] = {
         "actors": actors,

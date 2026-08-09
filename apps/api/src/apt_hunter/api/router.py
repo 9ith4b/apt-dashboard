@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from apt_hunter.api.routes.actors import router as actors_router
 from apt_hunter.api.routes.auth import audit_router
 from apt_hunter.api.routes.auth import router as auth_router
+from apt_hunter.api.routes.automation import router as automation_router
 from apt_hunter.api.routes.campaigns import router as campaigns_router
 from apt_hunter.api.routes.events import router as events_router
 from apt_hunter.api.routes.health import router as health_router
@@ -31,3 +32,4 @@ api_router.include_router(watch_rules_router, prefix="/watch-rules", tags=["watc
 api_router.include_router(notifications_router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(search_router, prefix="/search", tags=["search"])
 api_router.include_router(operations_router, prefix="/operations/jobs", tags=["operations"])
+api_router.include_router(automation_router, prefix="/ai", tags=["ai-automation"])

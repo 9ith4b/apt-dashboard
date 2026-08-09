@@ -5,6 +5,7 @@ from sqlalchemy import (
     JSON,
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -90,7 +91,21 @@ class ReportAnalysis(TimestampMixin, Base):
             name="report_analysis_confidence_range",
         ),
         CheckConstraint("version >= 1", name="report_analysis_version_positive"),
+        CheckConstraint(
+            "automation_status IN ('not_configured', 'processing', 'auto_approved', "
+            "'needs_review', 'auto_rejected', 'fallback')",
+            name="report_analysis_automation_status",
+        ),
+        CheckConstraint(
+            "ai_relevance_score IS NULL OR ai_relevance_score BETWEEN 0 AND 100",
+            name="report_analysis_ai_relevance_range",
+        ),
+        CheckConstraint(
+            "evidence_coverage IS NULL OR evidence_coverage BETWEEN 0 AND 100",
+            name="report_analysis_evidence_coverage_range",
+        ),
         Index("ix_report_analyses_review_updated", "review_status", "updated_at"),
+        Index("ix_report_analyses_model_config", "model_config_id"),
         Index(
             "ix_report_analyses_pending_review",
             "updated_at",
@@ -128,6 +143,19 @@ class ReportAnalysis(TimestampMixin, Base):
     reviewed_victims: Mapped[list[dict[str, object]] | None] = mapped_column(JSON)
     confidence_auto: Mapped[int | None] = mapped_column(Integer)
     method_version: Mapped[str] = mapped_column(String(32), default="rules-v1", nullable=False)
+    automation_status: Mapped[str] = mapped_column(
+        String(32), default="not_configured", nullable=False
+    )
+    ai_relevance_score: Mapped[int | None] = mapped_column(Integer)
+    ai_classification: Mapped[str | None] = mapped_column(String(100))
+    ai_summary: Mapped[str | None] = mapped_column(Text)
+    ai_claims: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list, nullable=False)
+    ai_verification: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
+    evidence_coverage: Mapped[int | None] = mapped_column(Integer)
+    decision_reason: Mapped[str | None] = mapped_column(Text)
+    model_config_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("ai_model_configs.id", ondelete="SET NULL")
+    )
     analyst_note: Mapped[str | None] = mapped_column(Text)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reviewed_by: Mapped[str | None] = mapped_column(String(100))
@@ -616,6 +644,152 @@ class OperationJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("operation_jobs.id", ondelete="SET NULL")
     )
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+
+class AIModelConfig(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "ai_model_configs"
+    __table_args__ = (
+        CheckConstraint(
+            "provider IN ('openai', 'deepseek', 'dashscope', 'siliconflow', 'ollama', 'custom')",
+            name="ai_model_config_provider_value",
+        ),
+        CheckConstraint(
+            "timeout_seconds BETWEEN 5 AND 300",
+            name="ai_model_config_timeout_range",
+        ),
+        CheckConstraint(
+            "temperature BETWEEN 0 AND 2",
+            name="ai_model_config_temperature_range",
+        ),
+        UniqueConstraint("name", name="uq_ai_model_configs_name"),
+        Index(
+            "uq_ai_model_configs_default",
+            "is_default",
+            unique=True,
+            postgresql_where=text("is_default IS TRUE"),
+            sqlite_where=text("is_default IS TRUE"),
+        ),
+        Index("ix_ai_model_configs_enabled_updated", "enabled", "updated_at"),
+    )
+
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    base_url: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str] = mapped_column(String(200), nullable=False)
+    api_key_ciphertext: Mapped[str | None] = mapped_column(Text)
+    enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
+    is_default: Mapped[bool] = mapped_column(default=False, nullable=False)
+    timeout_seconds: Mapped[int] = mapped_column(Integer, default=90, nullable=False)
+    temperature: Mapped[float] = mapped_column(Float, default=0.1, nullable=False)
+    updated_by: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_test_status: Mapped[str | None] = mapped_column(String(32))
+    last_test_error: Mapped[str | None] = mapped_column(Text)
+    last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AIProcessingPolicy(TimestampMixin, Base):
+    __tablename__ = "ai_processing_policies"
+    __table_args__ = (
+        CheckConstraint(
+            "relevance_threshold BETWEEN 0 AND 100",
+            name="ai_policy_relevance_range",
+        ),
+        CheckConstraint(
+            "auto_approve_threshold BETWEEN 0 AND 100",
+            name="ai_policy_auto_approve_range",
+        ),
+        CheckConstraint(
+            "auto_reject_threshold BETWEEN 0 AND 100",
+            name="ai_policy_auto_reject_range",
+        ),
+        CheckConstraint(
+            "minimum_evidence_coverage BETWEEN 0 AND 100",
+            name="ai_policy_evidence_coverage_range",
+        ),
+        CheckConstraint(
+            "max_article_chars BETWEEN 5000 AND 200000",
+            name="ai_policy_article_chars_range",
+        ),
+    )
+
+    key: Mapped[str] = mapped_column(String(32), primary_key=True, default="default")
+    automation_enabled: Mapped[bool] = mapped_column(default=False, nullable=False)
+    require_verification: Mapped[bool] = mapped_column(default=True, nullable=False)
+    auto_create_events: Mapped[bool] = mapped_column(default=True, nullable=False)
+    relevance_threshold: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
+    auto_approve_threshold: Mapped[int] = mapped_column(Integer, default=85, nullable=False)
+    auto_reject_threshold: Mapped[int] = mapped_column(Integer, default=20, nullable=False)
+    minimum_evidence_coverage: Mapped[int] = mapped_column(Integer, default=70, nullable=False)
+    max_article_chars: Mapped[int] = mapped_column(Integer, default=60000, nullable=False)
+    updated_by: Mapped[str] = mapped_column(String(100), default="system", nullable=False)
+
+
+class AIAnalysisRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "ai_analysis_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "stage IN ('analysis', 'verification', 'connection_test')",
+            name="ai_analysis_run_stage_value",
+        ),
+        CheckConstraint(
+            "status IN ('running', 'succeeded', 'failed')",
+            name="ai_analysis_run_status_value",
+        ),
+        CheckConstraint(
+            "confidence IS NULL OR confidence BETWEEN 0 AND 100",
+            name="ai_analysis_run_confidence_range",
+        ),
+        CheckConstraint(
+            "evidence_coverage IS NULL OR evidence_coverage BETWEEN 0 AND 100",
+            name="ai_analysis_run_evidence_range",
+        ),
+        Index("ix_ai_analysis_runs_report_created", "report_id", "created_at"),
+        Index("ix_ai_analysis_runs_status_created", "status", "created_at"),
+        Index("ix_ai_analysis_runs_config_created", "model_config_id", "created_at"),
+    )
+
+    report_id: Mapped[UUID | None] = mapped_column(ForeignKey("reports.id", ondelete="CASCADE"))
+    model_config_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("ai_model_configs.id", ondelete="SET NULL")
+    )
+    stage: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="running", nullable=False)
+    model: Mapped[str] = mapped_column(String(200), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    decision: Mapped[str | None] = mapped_column(String(32))
+    confidence: Mapped[int | None] = mapped_column(Integer)
+    evidence_coverage: Mapped[int | None] = mapped_column(Integer)
+    input_chars: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    result: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
+    error: Mapped[str | None] = mapped_column(Text)
+
+
+class AutomationException(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "automation_exceptions"
+    __table_args__ = (
+        CheckConstraint(
+            "severity IN ('low', 'medium', 'high', 'critical')",
+            name="automation_exception_severity_value",
+        ),
+        CheckConstraint(
+            "status IN ('open', 'resolved', 'dismissed')",
+            name="automation_exception_status_value",
+        ),
+        Index("ix_automation_exceptions_status_created", "status", "created_at"),
+        Index("ix_automation_exceptions_report_status", "report_id", "status"),
+    )
+
+    report_id: Mapped[UUID | None] = mapped_column(ForeignKey("reports.id", ondelete="CASCADE"))
+    exception_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    severity: Mapped[str] = mapped_column(String(32), default="medium", nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="open", nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    details: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
+    assigned_to: Mapped[str | None] = mapped_column(String(100))
+    resolved_by: Mapped[str | None] = mapped_column(String(100))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):

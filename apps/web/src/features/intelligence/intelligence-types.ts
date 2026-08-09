@@ -65,6 +65,21 @@ export type ReportAnalysis = {
   reviewed_victims: DiamondEntity[] | null
   confidence_auto: number | null
   method_version: string
+  automation_status:
+    | "not_configured"
+    | "processing"
+    | "auto_approved"
+    | "needs_review"
+    | "auto_rejected"
+    | "fallback"
+  ai_relevance_score: number | null
+  ai_classification: string | null
+  ai_summary: string | null
+  ai_claims: Array<Record<string, unknown>>
+  ai_verification: Record<string, unknown>
+  evidence_coverage: number | null
+  decision_reason: string | null
+  model_config_id: string | null
   analyst_note: string | null
   reviewed_at: string | null
   reviewed_by: string | null

@@ -9,6 +9,7 @@ from sqlalchemy import or_, select
 from apt_hunter.config import get_settings
 from apt_hunter.db.session import SessionLocal
 from apt_hunter.models import Report, Source
+from apt_hunter.services.automation import automation_enabled
 from apt_hunter.services.connectors import ConnectorPage, fetch_connector_page
 from apt_hunter.services.rss import FeedFetchResult, FeedItem, fetch_feed, score_apt_relevance
 
@@ -73,11 +74,14 @@ def _persist_page(
         inserted = 0
         duplicates = 0
         candidates = 0
+        ai_first = automation_enabled(session)
         for item in page.items:
             exact_hash = _exact_hash(item)
             relevance_score, relevance_reasons = score_apt_relevance(item.title, item.summary)
             status_value = (
-                "candidate" if relevance_score >= settings.rss_relevance_threshold else "filtered"
+                "candidate"
+                if ai_first or relevance_score >= settings.rss_relevance_threshold
+                else "filtered"
             )
             existing = session.scalar(
                 select(Report)

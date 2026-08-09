@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     article_max_bytes: int = 5_242_880
     max_compression_ratio: int = Field(default=100, ge=10, le=1000)
     enrichment_scheduler_batch_size: int = 10
+    ai_secrets_key: SecretStr | None = None
     auth_enabled: bool = False
     session_cookie_name: str = "apt_hunter_session"
     session_ttl_hours: int = Field(default=12, ge=1, le=168)

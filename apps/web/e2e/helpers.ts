@@ -8,8 +8,9 @@ export const routes = [
   ["/hunt", "IOC 狩猎"],
   ["/watch-rules", "关注规则"],
   ["/sources", "数据源"],
-  ["/reviews", "待审核"],
+  ["/reviews", "异常研判"],
   ["/operations", "作业中心"],
+  ["/automation", "AI 自动化"],
   ["/security", "身份与审计"],
 ] as const
 

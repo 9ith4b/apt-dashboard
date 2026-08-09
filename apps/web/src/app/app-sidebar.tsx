@@ -1,6 +1,7 @@
 import {
   ActivityIcon,
   BellRingIcon,
+  BotIcon,
   CircleDotDashedIcon,
   DatabaseIcon,
   FileCheck2Icon,
@@ -39,8 +40,14 @@ const navigation = [
   { title: "IOC 狩猎", url: "/hunt", icon: CircleDotDashedIcon },
   { title: "关注规则", url: "/watch-rules", icon: BellRingIcon },
   { title: "数据源", url: "/sources", icon: DatabaseIcon },
-  { title: "待审核", url: "/reviews", icon: FileCheck2Icon },
+  { title: "异常研判", url: "/reviews", icon: FileCheck2Icon },
   { title: "作业中心", url: "/operations", icon: ListTodoIcon },
+  {
+    title: "AI 自动化",
+    url: "/automation",
+    icon: BotIcon,
+    adminOnly: true,
+  },
   {
     title: "身份与审计",
     url: "/security",
