@@ -6,6 +6,7 @@
 - Implementation: `http://server.example.com:8180/login`
 - Implementation screenshot: `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-dark-production.png`
 - Motion-focused screenshot: `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-wander-final.jpg`
+- Wide-path screenshots: `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-wide-path-top.jpg` and `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-wide-path-bottom.jpg`
 - Responsive screenshot: `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-mobile-production.png`
 - Viewport: 1440 x 900 CSS px, device scale factor 1
 - Pixel normalization: source 1440 x 900 px and implementation 1440 x 900 px; no resampling required
@@ -40,6 +41,13 @@
 - Motion evidence: two live frames 2.6 seconds apart moved the accent by 9.98 CSS px after tuning. The visual-test query freezes the same position exactly across captures, preventing flaky screenshot baselines.
 - Composition evidence: at the 1280 x 720 browser viewport, the final accent is 163.4 x 142.4 CSS px inside a 755.2 px story panel. It remains behind the z-indexed copy and outside the login form.
 - Accessibility and performance: the scene remains decorative and pointer-transparent, caps both animation layers at 30 fps, pauses offscreen or in a hidden tab, and is not mounted for light theme, mobile width, reduced motion, or reduced data.
+
+### Iteration 3 — full story-panel route
+
+- Reference evidence: the user marked the complete left story panel as the permitted movement region, from the logo band down to the telemetry panel and ending at the center divider.
+- Fix: replaced the small harmonic orbit with an eight-point closed Catmull-Rom path spanning the upper-right, upper-left, lower-left, and lower-right portions of the story panel. The full loop is 120 seconds and remains smooth across the loop boundary.
+- Boundary evidence at 2048 x 1104: the story panel ends at x=1208.3. Four frozen route frames placed the accent at x/y 853.2/130.2, 172.3/80.3, 165.2/638.0, and 872.4/610.2; every rendered edge remained within x=0..1208.3 and y=0..1104, with no entry into the login panel.
+- Interaction evidence: a live 2.2-second sample moved 45.3 CSS px; light theme removed the scene and returning to dark remounted it. Browser console contained no warnings or errors.
 
 ## Browser and interaction checks
 

@@ -6,7 +6,7 @@ const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)"
 const DESKTOP_QUERY = "(min-width: 1280px)"
 const REDUCED_DATA_QUERY = "(prefers-reduced-data: reduce)"
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
-const LOOP_DURATION = 60_000
+const LOOP_DURATION = 120_000
 
 const BlackHoleRenderer = lazy(() =>
   import("@/components/visuals/black-hole-renderer").then((module) => ({
@@ -24,6 +24,17 @@ type IdleCapableWindow = Window & {
 
 type Point = { x: number; y: number }
 
+const WANDER_PATH: Point[] = [
+  { x: 0.8, y: 0.22 },
+  { x: 0.54, y: 0.14 },
+  { x: 0.24, y: 0.18 },
+  { x: 0.14, y: 0.44 },
+  { x: 0.23, y: 0.68 },
+  { x: 0.52, y: 0.72 },
+  { x: 0.82, y: 0.66 },
+  { x: 0.88, y: 0.4 },
+]
+
 const STARS = Array.from({ length: 72 }, (_, index) => ({
   x: ((index * 47 + 13) % 101) / 100,
   y: ((index * 71 + 29) % 103) / 102,
@@ -31,17 +42,48 @@ const STARS = Array.from({ length: 72 }, (_, index) => ({
   alpha: 0.12 + ((index * 31) % 13) / 100,
 }))
 
+function catmullRom(
+  before: number,
+  start: number,
+  end: number,
+  after: number,
+  progress: number
+) {
+  const squared = progress * progress
+  const cubed = squared * progress
+  return (
+    0.5 *
+    (2 * start +
+      (-before + end) * progress +
+      (2 * before - 5 * start + 4 * end - after) * squared +
+      (-before + 3 * start - 3 * end + after) * cubed)
+  )
+}
+
 function getPosition(time: number, width: number, height: number): Point {
-  const phase = (time / LOOP_DURATION) * Math.PI * 2
+  const pathProgress =
+    (((time % LOOP_DURATION) + LOOP_DURATION) % LOOP_DURATION) / LOOP_DURATION
+  const scaled = pathProgress * WANDER_PATH.length
+  const index = Math.floor(scaled) % WANDER_PATH.length
+  const progress = scaled - Math.floor(scaled)
+  const point = (offset: number) =>
+    WANDER_PATH[(index + offset + WANDER_PATH.length) % WANDER_PATH.length]!
+  const before = point(-1)
+  const start = point(0)
+  const end = point(1)
+  const after = point(2)
+  const normalizedX = Math.max(
+    0.13,
+    Math.min(0.87, catmullRom(before.x, start.x, end.x, after.x, progress))
+  )
+  const normalizedY = Math.max(
+    0.13,
+    Math.min(0.73, catmullRom(before.y, start.y, end.y, after.y, progress))
+  )
+
   return {
-    x:
-      width *
-      (0.8 + Math.sin(phase) * 0.055 + Math.sin(phase * 2.3 + 0.8) * 0.015),
-    y:
-      height *
-      (0.35 +
-        Math.sin(phase * 0.73 + 1.4) * 0.085 +
-        Math.sin(phase * 1.9) * 0.02),
+    x: width * normalizedX,
+    y: height * normalizedY,
   }
 }
 
@@ -155,6 +197,16 @@ export function BlackHoleAccent() {
     const visualTest = new URLSearchParams(window.location.search).has(
       "visual-test"
     )
+    const motionFrameParam = new URLSearchParams(window.location.search).get(
+      "motion-frame"
+    )
+    const requestedMotionFrame = Number(motionFrameParam)
+    const frozenTime =
+      motionFrameParam !== null && Number.isFinite(requestedMotionFrame)
+        ? (Math.max(0, Math.min(WANDER_PATH.length - 1, requestedMotionFrame)) /
+            WANDER_PATH.length) *
+          LOOP_DURATION
+        : 8_200
     const pointer = { x: 0, y: 0 }
     const startedAt = performance.now()
     let frame = 0
@@ -187,7 +239,7 @@ export function BlackHoleAccent() {
       }
       lastPaint = now
 
-      const elapsed = visualTest ? 8_200 : now - startedAt
+      const elapsed = visualTest ? frozenTime : now - startedAt
       const base = getPosition(elapsed, width, height)
       const hole = {
         x: base.x + pointer.x * 11,
