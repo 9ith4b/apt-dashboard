@@ -100,4 +100,39 @@ it("loads the wandering lens scene only after dark desktop becomes idle", async 
   ).toBeInTheDocument()
   expect(await screen.findByTestId("black-hole-renderer")).toBeInTheDocument()
   expect(document.querySelector("#black-hole-dom-lens")).toBeInTheDocument()
+  expect(screen.getByTestId("black-hole-wander-scene")).toHaveAttribute(
+    "data-tone",
+    "dark"
+  )
+})
+
+it("loads the light-theme gravitational lens on an eligible desktop", async () => {
+  vi.stubGlobal(
+    "requestIdleCallback",
+    vi.fn((callback: IdleRequestCallback) => {
+      callback({ didTimeout: false, timeRemaining: () => 10 })
+      return 1
+    })
+  )
+  vi.spyOn(window, "matchMedia").mockImplementation(
+    (query) =>
+      ({
+        matches: query === "(min-width: 1280px)",
+        media: query,
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => false,
+      }) as MediaQueryList
+  )
+
+  renderLogin()
+
+  expect(await screen.findByTestId("black-hole-accent")).toBeInTheDocument()
+  expect(screen.getByTestId("black-hole-wander-scene")).toHaveAttribute(
+    "data-tone",
+    "light"
+  )
 })

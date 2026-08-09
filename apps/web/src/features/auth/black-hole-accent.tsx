@@ -23,6 +23,7 @@ type IdleCapableWindow = Window & {
 }
 
 type Point = { x: number; y: number }
+type ThemeTone = "dark" | "light"
 
 const WANDER_PATH: Point[] = [
   { x: 0.8, y: 0.22 },
@@ -151,6 +152,7 @@ function createRadialDisplacementMap(size = 192) {
 export function BlackHoleAccent() {
   const { theme } = useTheme()
   const [enabled, setEnabled] = useState(false)
+  const [tone, setTone] = useState<ThemeTone>("light")
   const sceneRef = useRef<HTMLDivElement | null>(null)
   const accentRef = useRef<HTMLDivElement | null>(null)
   const horizonRef = useRef<HTMLDivElement | null>(null)
@@ -184,11 +186,9 @@ export function BlackHoleAccent() {
       cancelPendingMount()
       const dark =
         theme === "dark" || (theme === "system" && colorScheme.matches)
+      setTone(dark ? "dark" : "light")
       const eligible =
-        dark &&
-        desktop.matches &&
-        !reducedData.matches &&
-        !reducedMotion.matches
+        desktop.matches && !reducedData.matches && !reducedMotion.matches
 
       if (!eligible) {
         setEnabled(false)
@@ -235,6 +235,7 @@ export function BlackHoleAccent() {
     }
     if (!context) return
 
+    const lightTone = tone === "light"
     const story = scene.parentElement
     const storyContent = story?.querySelector<HTMLElement>(
       ".login-story-content"
@@ -332,7 +333,7 @@ export function BlackHoleAccent() {
 
       accent.style.width = `${holeSize}px`
       accent.style.transform = `translate3d(${hole.x - holeSize / 2}px, ${hole.y - holeSize / 2}px, 0) rotate(${rotation}deg) scale(${scale})`
-      const horizonSize = holeSize * 0.285
+      const horizonSize = holeSize * (lightTone ? 0.335 : 0.285)
       horizon.style.width = `${horizonSize}px`
       horizon.style.height = `${horizonSize * 0.94}px`
       horizon.style.transform = `translate3d(${hole.x - horizonSize / 2}px, ${hole.y - horizonSize * 0.45}px, 0) rotate(${rotation}deg) scale(${scale})`
@@ -360,14 +361,25 @@ export function BlackHoleAccent() {
         hole.y,
         lensRadius * 1.35
       )
-      glow.addColorStop(0, "rgba(211, 150, 88, 0.08)")
-      glow.addColorStop(0.5, "rgba(151, 103, 62, 0.025)")
-      glow.addColorStop(1, "rgba(151, 103, 62, 0)")
+      glow.addColorStop(
+        0,
+        lightTone ? "rgba(95, 72, 50, 0.09)" : "rgba(211, 150, 88, 0.08)"
+      )
+      glow.addColorStop(
+        0.5,
+        lightTone ? "rgba(95, 72, 50, 0.032)" : "rgba(151, 103, 62, 0.025)"
+      )
+      glow.addColorStop(
+        1,
+        lightTone ? "rgba(95, 72, 50, 0)" : "rgba(151, 103, 62, 0)"
+      )
       context.fillStyle = glow
       context.fillRect(0, 0, width, height)
 
       context.lineWidth = 1
-      context.strokeStyle = "rgba(210, 176, 136, 0.105)"
+      context.strokeStyle = lightTone
+        ? "rgba(32, 35, 34, 0.12)"
+        : "rgba(210, 176, 136, 0.105)"
       traceLensedLine(context, hole, lensRadius, 180, (progress) => {
         const angle = progress * Math.PI * 2
         return {
@@ -376,7 +388,9 @@ export function BlackHoleAccent() {
         }
       })
 
-      context.strokeStyle = "rgba(222, 190, 151, 0.075)"
+      context.strokeStyle = lightTone
+        ? "rgba(32, 35, 34, 0.085)"
+        : "rgba(222, 190, 151, 0.075)"
       for (const offset of [-0.06, 0.08]) {
         traceLensedLine(context, hole, lensRadius, 110, (progress) => ({
           x: width * (0.46 + progress * 0.62),
@@ -398,7 +412,9 @@ export function BlackHoleAccent() {
           0,
           1 - Math.hypot(dx, dy) / (lensRadius * 1.5)
         )
-        context.fillStyle = `rgba(230, 210, 187, ${star.alpha + proximity * 0.16})`
+        context.fillStyle = lightTone
+          ? `rgba(32, 35, 34, ${star.alpha * 0.64 + proximity * 0.12})`
+          : `rgba(230, 210, 187, ${star.alpha + proximity * 0.16})`
         context.beginPath()
         context.arc(
           point.x,
@@ -448,7 +464,7 @@ export function BlackHoleAccent() {
         storyContent.style.removeProperty("will-change")
       }
     }
-  }, [enabled])
+  }, [enabled, tone])
 
   if (!enabled) return null
 
@@ -460,6 +476,7 @@ export function BlackHoleAccent() {
     <div
       aria-hidden="true"
       className="black-hole-wander-scene"
+      data-tone={tone}
       data-testid="black-hole-wander-scene"
       ref={sceneRef}
     >
@@ -511,26 +528,26 @@ export function BlackHoleAccent() {
       >
         <Suspense fallback={null}>
           <BlackHoleRenderer
-            brightness={0.9}
-            coolColor="#593316"
+            brightness={tone === "light" ? 0.78 : 0.9}
+            coolColor={tone === "light" ? "#405f72" : "#593316"}
             distance={24}
             doppler={0.24}
             elevation={-5}
-            exposure={0.9}
+            exposure={tone === "light" ? 0.82 : 0.9}
             focus={[0.5, 0.52]}
             fov={38}
-            glow={0.62}
-            hotColor="#fff1d6"
+            glow={tone === "light" ? 0.48 : 0.62}
+            hotColor={tone === "light" ? "#c9e6ff" : "#fff1d6"}
             maxDpr={1}
             maxFps={30}
-            midColor="#d9a064"
+            midColor={tone === "light" ? "#79afd0" : "#d9a064"}
             paused={visualTest}
             resolution={0.45}
             roll={-18}
             spinSpeed={0.025}
             starBrightness={0}
             steps={150}
-            vignette={0.34}
+            vignette={tone === "light" ? 0.18 : 0.34}
           />
         </Suspense>
       </div>

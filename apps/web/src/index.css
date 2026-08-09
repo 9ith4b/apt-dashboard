@@ -1,14 +1,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: "Noto Sans SC", "Microsoft YaHei", "Geist Variable", sans-serif;
-  --font-mono: "Geist Mono", "SFMono-Regular", Consolas, monospace;
+  --font-heading: var(--type-display);
+  --font-sans: var(--type-sans);
+  --font-serif: var(--type-serif);
+  --font-mono: var(--type-mono);
   --color-surface: var(--surface);
   --color-surface-foreground: var(--surface-foreground);
   --color-confirmed: var(--confirmed);
@@ -45,13 +46,13 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
 }
 
 :root {
@@ -76,15 +77,37 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
+  --type-sans:
+    "Inter Variable", "Noto Sans SC", "Microsoft YaHei", ui-sans-serif,
+    system-ui, sans-serif;
+  --type-display:
+    "Inter Variable", "Noto Sans SC", "Microsoft YaHei", ui-sans-serif,
+    system-ui, sans-serif;
+  --type-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --type-mono:
+    ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
   --confirmed: oklch(0.55 0.14 176);
   --candidate: oklch(0.67 0.17 72);
   --malicious: oklch(0.577 0.245 27.325);
   --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.55 0.14 176);
-  --chart-3: oklch(0.67 0.17 72);
-  --chart-4: oklch(0.6 0.118 184.704);
-  --chart-5: oklch(0.398 0.07 227.392);
-  --radius: 0.625rem;
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 8px;
+  --shadow-2xs: 0 1px 3px 0 hsl(0 0% 0% / 5%);
+  --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 5%);
+  --shadow-sm:
+    0 1px 3px 0 hsl(0 0% 0% / 10%), 0 1px 2px -1px hsl(0 0% 0% / 10%);
+  --shadow: 0 1px 3px 0 hsl(0 0% 0% / 10%), 0 1px 2px -1px hsl(0 0% 0% / 10%);
+  --shadow-md:
+    0 1px 3px 0 hsl(0 0% 0% / 10%), 0 2px 4px -1px hsl(0 0% 0% / 10%);
+  --shadow-lg:
+    0 1px 3px 0 hsl(0 0% 0% / 10%), 0 4px 6px -1px hsl(0 0% 0% / 10%);
+  --shadow-xl:
+    0 1px 3px 0 hsl(0 0% 0% / 10%), 0 8px 10px -1px hsl(0 0% 0% / 10%);
+  --shadow-2xl: 0 1px 3px 0 hsl(0 0% 0% / 25%);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -121,10 +144,10 @@
   --candidate: oklch(0.77 0.16 75);
   --malicious: oklch(0.704 0.191 22.216);
   --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.72 0.15 176);
-  --chart-3: oklch(0.77 0.16 75);
-  --chart-4: oklch(0.7 0.19 27);
-  --chart-5: oklch(0.68 0.11 226);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -132,7 +155,7 @@
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.439 0 0);
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {
@@ -147,6 +170,20 @@
   body {
     @apply min-w-0 bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--type-display);
+  }
+
+  code,
+  pre {
+    font-family: var(--type-mono);
   }
 
   button:not(:disabled),
@@ -251,6 +288,23 @@
 
   .black-hole-accent > div {
     background: transparent;
+  }
+
+  .black-hole-wander-scene[data-tone="light"] .black-hole-lensing-field {
+    opacity: 0.74;
+    mix-blend-mode: multiply;
+  }
+
+  .black-hole-wander-scene[data-tone="light"] .black-hole-accent {
+    filter: invert(1) sepia(0.62) saturate(1.18) contrast(1.16);
+    mix-blend-mode: multiply;
+    opacity: 0.9;
+  }
+
+  .black-hole-wander-scene[data-tone="light"] .black-hole-event-horizon {
+    box-shadow:
+      0 0 0 1px rgb(17 18 17 / 74%),
+      0 0 16px 5px rgb(91 73 56 / 28%);
   }
 
   .black-hole-event-horizon {
