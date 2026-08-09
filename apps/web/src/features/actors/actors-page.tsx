@@ -63,7 +63,8 @@ import type {
 } from "@/features/intelligence/intelligence-types"
 import { cn } from "@/lib/utils"
 
-type RangePreset = "month" | "year" | "all" | "custom"
+type RangePreset =
+  "custom" | "month" | "three_months" | "six_months" | "year" | "all"
 
 function isoDate(value: Date) {
   const year = value.getFullYear()
@@ -83,7 +84,11 @@ function presetRange(
   const start =
     preset === "month"
       ? new Date(today.getFullYear(), today.getMonth(), 1)
-      : new Date(today.getFullYear(), 0, 1)
+      : preset === "three_months"
+        ? new Date(today.getFullYear(), today.getMonth() - 2, 1)
+        : preset === "six_months"
+          ? new Date(today.getFullYear(), today.getMonth() - 5, 1)
+          : new Date(today.getFullYear(), 0, 1)
   return { dateFrom: isoDate(start), dateTo: isoDate(today) }
 }
 
@@ -397,38 +402,23 @@ export function ActorsPage() {
               <h1 className="text-xl font-semibold">攻击组织持续跟踪</h1>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              合并组织别名，按自定义日期、月和年查看已确认攻击事件
+              合并组织别名，按自定义日期和常用时间范围查看已确认攻击事件
             </p>
           </div>
-          <FieldGroup className="w-full 2xl:max-w-4xl">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-end">
-              <Field className="lg:w-auto">
-                <FieldLabel>日期范围</FieldLabel>
-                <ToggleGroup
-                  aria-label="日期范围"
-                  className="w-full justify-start lg:w-auto"
-                  onValueChange={(value) => {
-                    if (value) {
-                      setPreset(value as RangePreset)
-                      setSelectedId(null)
-                      summaryMutation.reset()
-                    }
-                  }}
-                  size="sm"
-                  type="single"
-                  value={preset}
-                  variant="outline"
-                >
-                  <ToggleGroupItem value="month">本月</ToggleGroupItem>
-                  <ToggleGroupItem value="year">本年</ToggleGroupItem>
-                  <ToggleGroupItem value="all">全部</ToggleGroupItem>
-                  <ToggleGroupItem value="custom">自定义</ToggleGroupItem>
-                </ToggleGroup>
-              </Field>
+          <FieldGroup
+            className="w-full gap-3 2xl:max-w-[58rem]"
+            data-testid="actor-date-filter"
+          >
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-end">
               {preset === "custom" ? (
-                <div className="grid grid-cols-2 gap-3 lg:w-[22rem]">
+                <FieldGroup className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:w-96 xl:shrink-0">
                   <Field data-invalid={!rangeIsValid || undefined}>
-                    <FieldLabel htmlFor="actor-date-from">开始日期</FieldLabel>
+                    <FieldLabel
+                      className="h-5 items-center"
+                      htmlFor="actor-date-from"
+                    >
+                      开始日期
+                    </FieldLabel>
                     <Input
                       aria-invalid={!rangeIsValid || undefined}
                       id="actor-date-from"
@@ -442,7 +432,12 @@ export function ActorsPage() {
                     />
                   </Field>
                   <Field data-invalid={!rangeIsValid || undefined}>
-                    <FieldLabel htmlFor="actor-date-to">结束日期</FieldLabel>
+                    <FieldLabel
+                      className="h-5 items-center"
+                      htmlFor="actor-date-to"
+                    >
+                      结束日期
+                    </FieldLabel>
                     <Input
                       aria-invalid={!rangeIsValid || undefined}
                       id="actor-date-to"
@@ -455,8 +450,44 @@ export function ActorsPage() {
                       value={customTo}
                     />
                   </Field>
-                </div>
+                </FieldGroup>
               ) : null}
+              <Field className="xl:w-auto xl:shrink-0">
+                <FieldLabel className="h-5 items-center">日期范围</FieldLabel>
+                <ToggleGroup
+                  aria-label="日期范围"
+                  className="w-full flex-wrap justify-start xl:w-auto xl:flex-nowrap"
+                  onValueChange={(value) => {
+                    if (value) {
+                      setPreset(value as RangePreset)
+                      setSelectedId(null)
+                      summaryMutation.reset()
+                    }
+                  }}
+                  type="single"
+                  value={preset}
+                  variant="outline"
+                >
+                  <ToggleGroupItem className="h-10" value="custom">
+                    自定义
+                  </ToggleGroupItem>
+                  <ToggleGroupItem className="h-10" value="month">
+                    本月
+                  </ToggleGroupItem>
+                  <ToggleGroupItem className="h-10" value="three_months">
+                    3个月
+                  </ToggleGroupItem>
+                  <ToggleGroupItem className="h-10" value="six_months">
+                    6个月
+                  </ToggleGroupItem>
+                  <ToggleGroupItem className="h-10" value="year">
+                    本年
+                  </ToggleGroupItem>
+                  <ToggleGroupItem className="h-10" value="all">
+                    全部
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </Field>
             </div>
             {!rangeIsValid ? (
               <FieldError className="text-right">

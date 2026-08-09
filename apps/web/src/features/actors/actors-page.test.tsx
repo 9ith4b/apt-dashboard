@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -119,6 +119,13 @@ function jsonResponse(payload: unknown) {
   })
 }
 
+function isoDate(value: Date) {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, "0")
+  const day = String(value.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 describe("threat actor tracking", () => {
   beforeEach(() => {
     window.history.pushState({}, "", "/actors")
@@ -165,6 +172,27 @@ describe("threat actor tracking", () => {
     await user.click(screen.getByRole("button", { name: "生成摘要草稿" }))
     expect(await screen.findByText(trackingSummary.title)).toBeInTheDocument()
     expect(screen.getByText("2 个事件、1 条 Evidence 支撑")).toBeInTheDocument()
+
+    const rangeControls = within(
+      screen.getByRole("radiogroup", { name: "日期范围" })
+    )
+    expect(
+      rangeControls.getAllByRole("radio").map((control) => control.textContent)
+    ).toEqual(["自定义", "本月", "3个月", "6个月", "本年", "全部"])
+
+    const today = new Date()
+    const threeMonthStart = new Date(
+      today.getFullYear(),
+      today.getMonth() - 2,
+      1
+    )
+    await user.click(rangeControls.getByRole("radio", { name: "3个月" }))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        `/api/v1/actors?date_from=${isoDate(threeMonthStart)}&date_to=${isoDate(today)}&limit=200`,
+        expect.anything()
+      )
+    })
 
     await user.click(screen.getByRole("radio", { name: "自定义" }))
     await user.clear(screen.getByLabelText("开始日期"))
