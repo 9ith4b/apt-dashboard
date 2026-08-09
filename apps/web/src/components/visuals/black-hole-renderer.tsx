@@ -98,6 +98,8 @@ export interface BlackHoleHeroSectionProps extends React.HTMLAttributes<HTMLDivE
   resolution?: number
   /** Cap on device pixel ratio. */
   maxDpr?: number
+  /** Cap the render loop to keep the effect from competing with the login form. */
+  maxFps?: number
   /**
    * Where the hole sits in the frame, as fractions of width and height, top
    * left origin. [0.5, 0.5] centres it. The default puts it high and right,
@@ -646,6 +648,7 @@ export function BlackHoleHeroSection({
   steps = 300,
   resolution = 0.7,
   maxDpr = 1.75,
+  maxFps = 60,
   focus = [0.72, 0.46],
   scrim = "none",
   scrimStrength = 0.9,
@@ -682,6 +685,7 @@ export function BlackHoleHeroSection({
     steps,
     resolution,
     maxDpr,
+    maxFps,
     focus,
     scrim,
     scrimStrength,
@@ -713,6 +717,7 @@ export function BlackHoleHeroSection({
       steps,
       resolution,
       maxDpr,
+      maxFps,
       focus,
       scrim,
       scrimStrength,
@@ -736,6 +741,7 @@ export function BlackHoleHeroSection({
     grain,
     hotColor,
     maxDpr,
+    maxFps,
     midColor,
     orbitSpeed,
     paused,
@@ -1234,6 +1240,9 @@ export function BlackHoleHeroSection({
         lastFrame = now
         return
       }
+      const targetInterval =
+        1000 / Math.max(1, Math.min(60, props.current.maxFps))
+      if (lastFrame && now - lastFrame < targetInterval) return
       const dt = lastFrame ? Math.min(0.05, (now - lastFrame) / 1000) : 0
       lastFrame = now
       if (!props.current.paused && !reduced) clock += dt

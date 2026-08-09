@@ -5,6 +5,7 @@
 - Source visual truth: `C:\Users\example\.codex\generated_images\019fdcbd-12f7-7462-9a92-c6eb99d4362f\exec-a9d323d9-05ec-4e28-897d-ea8765dac40b.png`
 - Implementation: `http://server.example.com:8180/login`
 - Implementation screenshot: `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-dark-production.png`
+- Motion-focused screenshot: `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-wander-final.jpg`
 - Responsive screenshot: `C:\Users\example\Documents\Codex\2026-08-07\twitter\work\remote-ui\qa\login-mobile-production.png`
 - Viewport: 1440 x 900 CSS px, device scale factor 1
 - Pixel normalization: source 1440 x 900 px and implementation 1440 x 900 px; no resampling required
@@ -32,6 +33,14 @@
 - No actionable P0, P1, or P2 mismatches remain.
 - P3: the live physical renderer naturally has a slightly cleaner, thinner photon ring than the still concept. This is acceptable because motion and fidelity to the supplied component are intentional.
 
+### Iteration 2 — roaming gravitational lens
+
+- Finding: the static accent did not communicate a moving gravity well, while moving the renderer alone left the background visually unaffected.
+- Fix: added a full-story lensing canvas that bends sampled orbit paths, light traces, and star points around the renderer's live center; the renderer now follows a restrained irregular 60-second path with a small pointer perturbation.
+- Motion evidence: two live frames 2.6 seconds apart moved the accent by 9.98 CSS px after tuning. The visual-test query freezes the same position exactly across captures, preventing flaky screenshot baselines.
+- Composition evidence: at the 1280 x 720 browser viewport, the final accent is 163.4 x 142.4 CSS px inside a 755.2 px story panel. It remains behind the z-indexed copy and outside the login form.
+- Accessibility and performance: the scene remains decorative and pointer-transparent, caps both animation layers at 30 fps, pauses offscreen or in a hidden tab, and is not mounted for light theme, mobile width, reduced motion, or reduced data.
+
 ## Browser and interaction checks
 
 - Page identity: `APT Hunter` at `/login`.
@@ -41,7 +50,8 @@
 - Password visibility: `password` -> `text` -> `password` verified.
 - Theme behavior: switching to light removes the accent; returning to dark remounts it after idle.
 - Responsive behavior: at 390 x 844 the story and renderer are not mounted, while the complete login form remains visible.
-- Performance behavior: the renderer is an independent 25.88 kB production chunk (10.32 kB gzip), loaded only on eligible dark desktop sessions.
+- Deterministic visual baseline: `/login?visual-test=1` holds the renderer and trajectory at a fixed frame.
+- Performance behavior: the renderer is an independent 25.98 kB production chunk (10.36 kB gzip), loaded only on eligible dark desktop sessions; the lensing layer uses no per-frame React state updates.
 
 ## Follow-up polish
 

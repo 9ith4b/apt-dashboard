@@ -61,7 +61,7 @@ it("renders the lightweight intelligence identity and toggles password visibilit
   expect(screen.getByRole("button", { name: "隐藏密码" })).toBeInTheDocument()
 })
 
-it("loads the black-hole accent only after dark desktop becomes idle", async () => {
+it("loads the wandering lens scene only after dark desktop becomes idle", async () => {
   vi.stubGlobal(
     "requestIdleCallback",
     vi.fn((callback: IdleRequestCallback) => {
@@ -92,5 +92,8 @@ it("loads the black-hole accent only after dark desktop becomes idle", async () 
   )
 
   expect(await screen.findByTestId("black-hole-accent")).toBeInTheDocument()
+  expect(
+    await screen.findByTestId("black-hole-lensing-field")
+  ).toBeInTheDocument()
   expect(await screen.findByTestId("black-hole-renderer")).toBeInTheDocument()
 })

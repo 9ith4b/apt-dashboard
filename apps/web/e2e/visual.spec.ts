@@ -11,7 +11,7 @@ test("login page visual baseline", async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     localStorage.setItem("apt-hunter-theme", "dark")
   })
-  await page.goto("/login")
+  await page.goto("/login?visual-test=1")
   await expect(page.getByRole("button", { name: "安全登录" })).toBeVisible()
   await expect(page.getByTestId("black-hole-accent")).toBeVisible()
   await expect(page).toHaveScreenshot("login-page.png", { fullPage: true })
