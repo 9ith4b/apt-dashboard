@@ -167,4 +167,30 @@ describe("APT Hunter intelligence feed", () => {
       await screen.findByRole("link", { name: /Midnight Blizzard/ })
     ).toHaveAttribute("href", expect.stringContaining("/actors?actor="))
   })
+
+  it("collapses and expands the desktop sidebar", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    const sidebar = document.querySelector('[data-slot="sidebar"][data-state]')
+    expect(sidebar).toHaveAttribute("data-state", "expanded")
+
+    const collapseButton = screen.getByRole("button", {
+      name: "收起侧边栏",
+    })
+    expect(collapseButton).toHaveAttribute("aria-expanded", "true")
+    await user.click(collapseButton)
+
+    expect(sidebar).toHaveAttribute("data-state", "collapsed")
+    const expandButton = screen.getByRole("button", {
+      name: "展开侧边栏",
+    })
+    expect(expandButton).toHaveAttribute("aria-expanded", "false")
+    await user.click(expandButton)
+
+    expect(sidebar).toHaveAttribute("data-state", "expanded")
+    expect(
+      screen.getByRole("button", { name: "收起侧边栏" })
+    ).toBeInTheDocument()
+  })
 })

@@ -6,6 +6,8 @@ import {
   FileCheck2Icon,
   GitBranchIcon,
   ListTodoIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
   RadarIcon,
   SendIcon,
   ShieldCheckIcon,
@@ -25,6 +27,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/features/auth/auth-context"
 
@@ -46,12 +49,41 @@ const navigation = [
   },
 ] as const
 
+function SidebarCollapseButton() {
+  const { state, toggleSidebar } = useSidebar()
+  const isCollapsed = state === "collapsed"
+  const label = isCollapsed ? "展开侧边栏" : "收起侧边栏"
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          aria-controls="app-sidebar-navigation"
+          aria-expanded={!isCollapsed}
+          aria-label={label}
+          onClick={toggleSidebar}
+          size="lg"
+          tooltip={label}
+          type="button"
+        >
+          {isCollapsed ? (
+            <PanelLeftOpenIcon aria-hidden="true" />
+          ) : (
+            <PanelLeftCloseIcon aria-hidden="true" />
+          )}
+          <span>{label}</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  )
+}
+
 export function AppSidebar() {
   const location = useLocation()
   const auth = useAuth()
 
   return (
-    <Sidebar collapsible="icon" variant="sidebar">
+    <Sidebar collapsible="icon" id="app-sidebar-navigation" variant="sidebar">
       <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-3">
         <NavLink className="flex items-center gap-3" to="/feed">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-xs">
@@ -100,7 +132,8 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-3">
+      <SidebarFooter className="gap-2 p-3">
+        <SidebarCollapseButton />
         <div className="flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent/55 px-3 py-2.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <span className="relative flex size-2.5 shrink-0">
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-confirmed opacity-35" />
