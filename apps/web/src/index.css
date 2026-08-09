@@ -195,6 +195,30 @@
     content: "";
   }
 
+  .black-hole-accent {
+    position: absolute;
+    top: clamp(14rem, 28vh, 16rem);
+    right: clamp(1rem, 3.4vw, 3.5rem);
+    z-index: 0;
+    width: clamp(13.5rem, 17vw, 15.5rem);
+    aspect-ratio: 1.15;
+    contain: strict;
+    filter: saturate(0.72) contrast(1.08);
+    mask-image: radial-gradient(
+      ellipse 54% 48% at 50% 50%,
+      black 38%,
+      rgb(0 0 0 / 78%) 58%,
+      transparent 100%
+    );
+    mix-blend-mode: screen;
+    opacity: 0.86;
+    pointer-events: none;
+  }
+
+  .black-hole-accent > div {
+    background: transparent;
+  }
+
   .login-telemetry-row {
     display: grid;
     grid-template-columns: 4.25rem minmax(0, 1fr) auto;

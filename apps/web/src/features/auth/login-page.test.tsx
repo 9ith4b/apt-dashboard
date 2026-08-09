@@ -1,10 +1,19 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { expect, it, vi } from "vitest"
+import { afterEach, expect, it, vi } from "vitest"
 
 import { ThemeProvider } from "@/components/theme-provider"
 
 import { LoginPage } from "./login-page"
+
+vi.mock("@/components/visuals/black-hole-renderer", () => ({
+  BlackHoleHeroSection: () => <div data-testid="black-hole-renderer" />,
+}))
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
 function renderLogin(onLogin = vi.fn()) {
   render(
@@ -44,9 +53,44 @@ it("renders the lightweight intelligence identity and toggles password visibilit
   expect(document.querySelector("iframe")).not.toBeInTheDocument()
   expect(document.querySelector("canvas")).not.toBeInTheDocument()
   expect(document.querySelector("video")).not.toBeInTheDocument()
+  expect(screen.queryByTestId("black-hole-accent")).not.toBeInTheDocument()
 
   const password = screen.getByLabelText("密码")
   await user.click(screen.getByRole("button", { name: "显示密码" }))
   expect(password).toHaveAttribute("type", "text")
   expect(screen.getByRole("button", { name: "隐藏密码" })).toBeInTheDocument()
+})
+
+it("loads the black-hole accent only after dark desktop becomes idle", async () => {
+  vi.stubGlobal(
+    "requestIdleCallback",
+    vi.fn((callback: IdleRequestCallback) => {
+      callback({ didTimeout: false, timeRemaining: () => 10 })
+      return 1
+    })
+  )
+  vi.spyOn(window, "matchMedia").mockImplementation(
+    (query) =>
+      ({
+        matches:
+          query === "(min-width: 1280px)" ||
+          query === "(prefers-color-scheme: dark)",
+        media: query,
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => false,
+      }) as MediaQueryList
+  )
+
+  render(
+    <ThemeProvider defaultTheme="dark" storageKey="login-accent-test-theme">
+      <LoginPage error={null} pending={false} onLogin={vi.fn()} />
+    </ThemeProvider>
+  )
+
+  expect(await screen.findByTestId("black-hole-accent")).toBeInTheDocument()
+  expect(await screen.findByTestId("black-hole-renderer")).toBeInTheDocument()
 })

@@ -8,14 +8,12 @@ test("login page visual baseline", async ({ page }, testInfo) => {
     "Desktop visual baseline"
   )
   credentials()
+  await page.addInitScript(() => {
+    localStorage.setItem("apt-hunter-theme", "dark")
+  })
   await page.goto("/login")
   await expect(page.getByRole("button", { name: "安全登录" })).toBeVisible()
-  await page.addStyleTag({
-    content: `
-      .black-hole-scene iframe { visibility: hidden !important; }
-      .black-hole-fallback { opacity: 0.72 !important; }
-    `,
-  })
+  await expect(page.getByTestId("black-hole-accent")).toBeVisible()
   await expect(page).toHaveScreenshot("login-page.png", { fullPage: true })
 })
 

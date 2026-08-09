@@ -25,6 +25,8 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group"
 
+import { BlackHoleAccent } from "./black-hole-accent"
+
 const telemetry = [
   {
     label: "采集",
@@ -57,6 +59,8 @@ export function LoginPage({
   return (
     <main className="login-shell grid min-h-dvh text-foreground lg:grid-cols-[minmax(0,1.18fr)_minmax(26rem,0.82fr)]">
       <section className="login-story flex min-h-dvh flex-col px-10 py-8 xl:px-16 xl:py-10">
+        <BlackHoleAccent />
+
         <div className="relative z-10 flex items-center gap-3">
           <span className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
             <RadarIcon aria-hidden="true" />
