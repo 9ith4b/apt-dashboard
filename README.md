@@ -64,10 +64,88 @@ python -m venv .venv
 ```bash
 cp infra/.env.example infra/.env
 cd infra
-docker compose up -d --build
+docker compose --env-file .env -f compose.yaml up -d --build
 ./scripts/release-check.sh
 ./scripts/security-check.sh
 ./scripts/e2e-live.sh
 ```
+
+## 部署与启动
+
+### 环境要求
+
+- Ubuntu Server（建议 22.04 LTS 或更高版本）
+- Docker Engine 及 Docker Compose v2（`docker compose version` 应可正常执行）
+- Git、至少 4 vCPU、8 GB 内存和 40 GB 可用磁盘空间
+- 对外开放 Web 端口（默认 `8180`）；PostgreSQL、Redis、MinIO 和 Prometheus 仅在 Compose 网络或本机使用
+
+### 首次部署
+
+在服务器上执行以下命令。将仓库地址和分支替换为实际发布版本；生产环境建议使用提交号作为镜像标签，避免 `latest` 漂移。
+
+```bash
+git clone <repository-url> /opt/apt-hunter
+cd /opt/apt-hunter
+git checkout <release-or-commit>
+
+cp infra/.env.example infra/.env
+${EDITOR:-vi} infra/.env
+```
+
+至少检查并修改 `infra/.env` 中的数据库、Redis、MinIO 密码和 `APT_HUNTER_AI_SECRETS_KEY`。AI 密钥加密用的 `APT_HUNTER_AI_SECRETS_KEY` 应使用随机生成的稳定值（至少 32 个字符），后续升级不得更换，否则已保存的 AI 凭据无法解密。`.env` 包含敏感信息，禁止提交到 Git。
+
+启动服务并验证：
+
+```bash
+cd /opt/apt-hunter/infra
+docker compose --env-file .env -f compose.yaml up -d --build
+./scripts/release-check.sh
+```
+
+通过 `http://<服务器地址>:8180` 访问系统。首次登录后请立即修改管理员密码，并在“系统配置 / AI 自动化”中添加、测试并选择默认模型；AI 策略可按试运行需要启用，低置信度结果会进入人工审核队列。
+
+### 服务器重启后启动
+
+Compose 使用持久化卷保存 PostgreSQL、MinIO 和 Redis 数据。主机重启后无需重新初始化数据库，也不要执行 `down -v`；进入项目目录重新拉起服务即可：
+
+```bash
+cd /opt/apt-hunter/infra
+docker compose --env-file .env -f compose.yaml up -d
+./scripts/release-check.sh
+```
+
+`migrate` 容器正常完成迁移后会退出，这是预期行为；其余 `api`、`worker`、`beat`、`web`、`postgres`、`redis`、`minio` 和 `prometheus` 应显示为 `Up`，其中 API、数据库、Redis 和 MinIO 应为 `healthy`。
+
+### 日常运维
+
+```bash
+# 查看服务状态
+docker compose --env-file .env -f compose.yaml ps
+
+# 查看核心服务日志（Ctrl-C 退出）
+docker compose --env-file .env -f compose.yaml logs -f api worker beat web
+
+# 正常停止和启动（不删除数据卷）
+docker compose --env-file .env -f compose.yaml stop
+docker compose --env-file .env -f compose.yaml start
+```
+
+只有在需要重建网络或容器时才使用 `docker compose ... down`。除非确认要清空全部本地数据，否则不要使用 `down -v`。备份、恢复、健康检查、日志保留和故障排查见 [运维与发布手册](./docs/operations-runbook.md)。
+
+### 更新与回滚
+
+更新前先创建数据库和对象存储备份，然后固定到目标提交并重建服务：
+
+```bash
+cd /opt/apt-hunter
+git fetch --all --tags
+git checkout <target-commit>
+export APT_HUNTER_IMAGE_TAG="$(git rev-parse HEAD)"
+cd infra
+docker compose --env-file .env -f compose.yaml up -d --build
+./scripts/release-check.sh
+```
+
+如果健康检查失败，查看 `docker compose ... logs`，将代码和 `APT_HUNTER_IMAGE_TAG` 回滚到上一个已验证提交，再重新执行启动和检查命令。不要删除 PostgreSQL/MinIO 数据卷来处理应用升级问题。
 
 详细状态见 [AI 自动化说明](./docs/ai-automation.md)、[1.0.0 发布说明](./docs/m12-status.md)、[交付完成矩阵](./docs/completion-matrix.md)、[运维与发布手册](./docs/operations-runbook.md) 和 [OpenAPI 契约](./docs/api-contract.md)。
