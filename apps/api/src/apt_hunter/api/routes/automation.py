@@ -238,11 +238,16 @@ def update_policy(
                 detail="启用自动化前必须通过默认模型连接测试",
             )
     policy = get_or_create_policy(session)
+    was_enabled = policy.automation_enabled
     for field, value in payload.model_dump().items():
         setattr(policy, field, value)
     policy.updated_by = _actor(request)
     session.commit()
     session.refresh(policy)
+    if payload.automation_enabled and not was_enabled:
+        # Do not make the first enablement depend on a separate UI action.
+        # The button remains available for explicit retries after model fixes.
+        backfill_filtered_reports(session)
     return _policy_read(policy)
 
 
