@@ -96,9 +96,13 @@ def _persist_page(
             if existing is not None:
                 existing.relevance_score = relevance_score
                 existing.relevance_reasons = relevance_reasons
-                existing.status = status_value
+                # A later RSS poll must not downgrade a terminal AI decision.
+                # It may promote a previously filtered item into the AI queue,
+                # but approved/rejected/candidate states remain authoritative.
+                if existing.status == "filtered" and status_value == "candidate":
+                    existing.status = "candidate"
                 duplicates += 1
-                if status_value == "candidate":
+                if existing.status == "candidate":
                     candidates += 1
                 continue
             if status_value == "candidate":
