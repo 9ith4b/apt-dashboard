@@ -406,6 +406,26 @@ def _record_exception(session: Session, report: Report, outcome: AutomationOutco
     )
 
 
+def _resolve_stale_ai_exceptions(
+    session: Session, report: Report, outcome: AutomationOutcome
+) -> None:
+    """Close failures superseded by a successful retry of the same report."""
+    stale = session.scalars(
+        select(AutomationException).where(
+            AutomationException.report_id == report.id,
+            AutomationException.status == "open",
+            AutomationException.exception_type.in_(
+                ("ai_processing_failed", "ai_verification_failed")
+            ),
+            AutomationException.exception_type != outcome.exception_type,
+        )
+    ).all()
+    for item in stale:
+        item.status = "resolved"
+        item.resolved_by = "ai-automation"
+        item.resolved_at = datetime.now(UTC)
+
+
 def apply_automation_decision(
     session: Session,
     *,
@@ -413,6 +433,7 @@ def apply_automation_decision(
     analysis: ReportAnalysis,
     outcome: AutomationOutcome,
 ) -> None:
+    _resolve_stale_ai_exceptions(session, report, outcome)
     _record_exception(session, report, outcome)
     if outcome.review_status == "pending":
         return

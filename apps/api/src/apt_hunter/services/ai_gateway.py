@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 from apt_hunter.models import AIModelConfig
 from apt_hunter.services.secrets import decrypt_secret
 
-PROMPT_VERSION = "apt-analysis-v1"
-VERIFY_PROMPT_VERSION = "apt-verifier-v1"
+PROMPT_VERSION = "apt-analysis-v2"
+VERIFY_PROMPT_VERSION = "apt-verifier-v2"
 
 
 class AIEntity(BaseModel):
@@ -91,6 +91,246 @@ def _json_from_content(content: str) -> dict[str, object]:
     return value
 
 
+_CLASSIFICATIONS = {
+    "apt_event",
+    "malware_analysis",
+    "vulnerability_activity",
+    "actor_research",
+    "security_news",
+    "irrelevant",
+}
+
+
+def _unwrap_payload(payload: dict[str, object]) -> dict[str, object]:
+    """Accept common OpenAI-compatible wrappers without weakening the contract."""
+    current = payload
+    for _ in range(2):
+        nested = None
+        for key in ("result", "analysis", "data", "output"):
+            value = current.get(key)
+            if isinstance(value, dict) and not any(
+                field in current
+                for field in ("relevant", "approved", "classification", "summary")
+            ):
+                nested = value
+                break
+        if nested is None:
+            return current
+        current = nested
+    return current
+
+
+def _text(value: object) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (list, tuple)):
+        return " ".join(item for item in (_text(item) for item in value) if item)
+    return ""
+
+
+def _clip(value: object, limit: int) -> str:
+    return _text(value)[:limit]
+
+
+def _score(value: object, default: int = 0) -> int:
+    """Normalize model scores expressed as integers, percentages, or 0..1 floats."""
+    if isinstance(value, bool):
+        return default
+    raw = _text(value)
+    if raw.endswith("%"):
+        raw = raw[:-1].strip()
+        try:
+            return max(0, min(100, round(float(raw))))
+        except ValueError:
+            return default
+    try:
+        number = float(value) if not isinstance(value, str) else float(raw)
+    except (TypeError, ValueError):
+        return default
+    if 0 <= number <= 1:
+        number *= 100
+    return max(0, min(100, round(number)))
+
+
+def _boolean(value: object, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    normalized = _text(value).casefold()
+    if normalized in {"true", "yes", "1", "是", "通过", "approved"}:
+        return True
+    if normalized in {"false", "no", "0", "否", "拒绝", "rejected"}:
+        return False
+    return default
+
+
+def _items(value: object) -> list[object]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, dict):
+        return [value]
+    return []
+
+
+def _entity_items(value: object, dimension: str) -> list[dict[str, object]]:
+    normalized: list[dict[str, object]] = []
+    for item in _items(value):
+        if not isinstance(item, dict):
+            continue
+        name = _clip(item.get("name") or item.get("entity") or item.get("value"), 500)
+        evidence = _clip(
+            item.get("evidence")
+            or item.get("quote")
+            or item.get("excerpt")
+            or item.get("context"),
+            5000,
+        )
+        # An entity without a quote cannot pass grounding, so discard only that
+        # malformed item instead of failing the entire article analysis.
+        if not name or not evidence:
+            continue
+        normalized.append(
+            {
+                "name": name,
+                "type": _clip(item.get("type") or dimension, 100),
+                "confidence": _score(item.get("confidence"), 0),
+                "evidence": evidence,
+            }
+        )
+    return normalized
+
+
+def _technique_items(value: object) -> list[dict[str, object]]:
+    normalized: list[dict[str, object]] = []
+    for item in _items(value):
+        if not isinstance(item, dict):
+            continue
+        technique_id = _clip(
+            item.get("technique_id") or item.get("id") or item.get("technique"), 32
+        ).upper()
+        if not re.fullmatch(r"T\d{4}(?:\.\d{3})?", technique_id):
+            continue
+        name = _clip(item.get("name") or item.get("technique_name"), 200)
+        evidence = _clip(
+            item.get("evidence")
+            or item.get("quote")
+            or item.get("excerpt")
+            or item.get("context"),
+            5000,
+        )
+        if not name or not evidence:
+            continue
+        normalized.append(
+            {
+                "technique_id": technique_id,
+                "name": name,
+                "tactic": _clip(item.get("tactic"), 100) or None,
+                "confidence": _score(item.get("confidence"), 0),
+                "evidence": evidence,
+            }
+        )
+    return normalized
+
+
+def _claim_items(value: object) -> list[dict[str, object]]:
+    normalized: list[dict[str, object]] = []
+    for item in _items(value):
+        if not isinstance(item, dict):
+            continue
+        subject = _clip(item.get("subject") or item.get("entity"), 500)
+        predicate = _clip(item.get("predicate") or item.get("relation"), 200)
+        object_value = _clip(item.get("object") or item.get("value"), 1000)
+        evidence = _clip(
+            item.get("evidence")
+            or item.get("quote")
+            or item.get("excerpt")
+            or item.get("context"),
+            5000,
+        )
+        if not subject or not predicate or not object_value or not evidence:
+            continue
+        statement_type = _text(item.get("statement_type") or item.get("type")).casefold()
+        if statement_type not in {"fact", "source_claim", "inference"}:
+            statement_type = "inference"
+        normalized.append(
+            {
+                "subject": subject,
+                "predicate": predicate,
+                "object": object_value,
+                "statement_type": statement_type,
+                "confidence": _score(item.get("confidence"), 0),
+                "evidence": evidence,
+            }
+        )
+    return normalized
+
+
+def _string_items(value: object) -> list[str]:
+    values: list[str] = []
+    for item in _items(value):
+        if isinstance(item, dict):
+            item = item.get("contradiction") or item.get("issue") or item.get("reason")
+        text = _clip(item, 3000)
+        if text:
+            values.append(text)
+    return values
+
+
+def _normalize_classification(value: object) -> str:
+    normalized = _text(value).casefold().replace("-", "_").replace(" ", "_")
+    aliases = {
+        "apt": "apt_event",
+        "apt_activity": "apt_event",
+        "apt事件": "apt_event",
+        "恶意软件": "malware_analysis",
+        "漏洞": "vulnerability_activity",
+        "漏洞活动": "vulnerability_activity",
+        "组织研究": "actor_research",
+        "安全新闻": "security_news",
+        "无关": "irrelevant",
+    }
+    normalized = aliases.get(normalized, normalized)
+    if normalized not in _CLASSIFICATIONS:
+        raise ValueError(f"Unsupported AI classification: {value!r}")
+    return normalized
+
+
+def _normalize_analysis_payload(payload: dict[str, object]) -> dict[str, object]:
+    raw = _unwrap_payload(payload)
+    relevance_score = _score(raw.get("relevance_score", raw.get("relevance")), 0)
+    classification = _normalize_classification(raw.get("classification"))
+    return {
+        "relevant": _boolean(raw.get("relevant", raw.get("is_relevant")), relevance_score >= 60),
+        "relevance_score": relevance_score,
+        "classification": classification,
+        "summary": _clip(raw.get("summary") or raw.get("abstract"), 3000),
+        "confidence": _score(raw.get("confidence", raw.get("confidence_score")), 0),
+        "actors": _entity_items(raw.get("actors"), "actor"),
+        "capabilities": _entity_items(raw.get("capabilities"), "capability"),
+        "infrastructure": _entity_items(raw.get("infrastructure"), "infrastructure"),
+        "victims": _entity_items(raw.get("victims"), "victim"),
+        "attack_techniques": _technique_items(raw.get("attack_techniques")),
+        "claims": _claim_items(raw.get("claims")),
+        "contradictions": _string_items(raw.get("contradictions")),
+        "decision_reason": _clip(raw.get("decision_reason") or raw.get("reason"), 3000),
+    }
+
+
+def _normalize_verification_payload(payload: dict[str, object]) -> dict[str, object]:
+    raw = _unwrap_payload(payload)
+    return {
+        "approved": _boolean(raw.get("approved", raw.get("is_approved"))),
+        "confidence": _score(raw.get("confidence", raw.get("confidence_score")), 0),
+        "evidence_coverage": _score(
+            raw.get("evidence_coverage", raw.get("evidenceCoverage")), 0
+        ),
+        "issues": _string_items(raw.get("issues")),
+        "contradiction_found": _boolean(
+            raw.get("contradiction_found", raw.get("contradiction"))
+        ),
+        "decision_reason": _clip(raw.get("decision_reason") or raw.get("reason"), 3000),
+    }
+
+
 def _chat(
     config: AIModelConfig,
     messages: list[dict[str, str]],
@@ -134,22 +374,27 @@ def analyze_with_model(
     title: str,
     content: str,
 ) -> tuple[AIAnalysisPayload, int]:
-    system = """你是APT威胁情报分析员。分析输入报告并只返回JSON。禁止补充原文没有的信息。
-每个实体、ATT&CK技术和主张都必须提供原文中的逐字证据片段。严格区分：
-fact=可直接观察事实；source_claim=来源明确提出的归因或判断；inference=你的推断。
+    system = """你是APT威胁情报分析员。分析输入报告并只返回一个JSON对象。禁止补充原文没有的信息。
+每个实体、ATT&CK技术和主张都必须提供原文中的逐字证据片段；无法引用原文的项目必须省略。
+严格区分：fact=可直接观察事实；source_claim=来源明确提出的归因或判断；inference=你的推断。
 归因措辞如疑似、可能、关联不得改写为确认。组织别名只能在上下文明示或有充分证据时关联。
+所有 confidence 和 relevance_score 都必须是0到100的整数，不得使用0到1的小数或百分比字符串。
+实体必须是对象数组，每项包含name,type,confidence,evidence；能力也必须使用同样的对象格式。
+ATT&CK字段为technique_id,name,tactic,confidence,evidence；主张字段为subject,predicate,object,
+statement_type,confidence,evidence；contradictions必须是字符串数组。
 输出字段：relevant,relevance_score,classification,summary,confidence,actors,capabilities,
 infrastructure,victims,attack_techniques,claims,contradictions,decision_reason。
 classification只能是apt_event、malware_analysis、vulnerability_activity、actor_research、
-security_news、irrelevant。实体字段为name,type,confidence,evidence；ATT&CK字段为
-technique_id,name,tactic,confidence,evidence；主张字段为subject,predicate,object,
-statement_type,confidence,evidence。所有分数范围0到100。"""
+security_news、irrelevant。"""
     user = f"报告标题：{title}\n\n报告正文：\n{content}"
     response = _chat(
         config,
         [{"role": "system", "content": system}, {"role": "user", "content": user}],
     )
-    return AIAnalysisPayload.model_validate(response.payload), response.latency_ms
+    return (
+        AIAnalysisPayload.model_validate(_normalize_analysis_payload(response.payload)),
+        response.latency_ms,
+    )
 
 
 def verify_with_model(
@@ -159,16 +404,21 @@ def verify_with_model(
     content: str,
     analysis: AIAnalysisPayload,
 ) -> tuple[AIVerificationPayload, int]:
-    system = """你是独立的APT情报质量验证员。只返回JSON，不重新生成报告。
+    system = """你是独立的APT情报质量验证员。只返回一个JSON对象，不重新生成报告。
 逐项检查分析结论是否有原文证据、是否混淆事实/来源主张/推断、是否过度归因、
 是否存在实体混淆或ATT&CK过度映射。evidence_coverage表示有效证据覆盖比例。
-输出字段：approved,confidence,evidence_coverage,issues,contradiction_found,decision_reason。"""
+confidence和evidence_coverage必须输出0到100的整数，不得输出0到1的小数。
+issues必须是字符串数组。输出字段：approved,confidence,evidence_coverage,issues,
+contradiction_found,decision_reason。"""
     user = f"标题：{title}\n\n原文：\n{content}\n\n待验证分析：\n{analysis.model_dump_json()}"
     response = _chat(
         config,
         [{"role": "system", "content": system}, {"role": "user", "content": user}],
     )
-    return AIVerificationPayload.model_validate(response.payload), response.latency_ms
+    return (
+        AIVerificationPayload.model_validate(_normalize_verification_payload(response.payload)),
+        response.latency_ms,
+    )
 
 
 def test_model_connection(config: AIModelConfig) -> tuple[int, str]:

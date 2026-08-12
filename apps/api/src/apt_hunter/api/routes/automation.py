@@ -13,6 +13,7 @@ from apt_hunter.models import (
     AIModelConfig,
     AIProcessingPolicy,
     AutomationException,
+    OperationJob,
     Report,
     ReportAnalysis,
 )
@@ -31,6 +32,7 @@ from apt_hunter.schemas.automation import (
 from apt_hunter.services.ai_gateway import test_model_connection
 from apt_hunter.services.auth import AuthPrincipal
 from apt_hunter.services.automation import default_model_config, get_or_create_policy
+from apt_hunter.services.jobs import queue_job
 from apt_hunter.services.secrets import encrypt_secret
 
 router = APIRouter()
@@ -255,8 +257,55 @@ def backfill_filtered_reports(session: DbSession) -> BackfillRead:
         .where(Report.status == "filtered", Report.id.not_in(report_ids_with_analysis))
         .values(status="candidate")
     )
+    promoted = int(getattr(result, "rowcount", 0) or 0)
+
+    # Enabling AI must also repair the reports that were collected before the
+    # switch, or that previously fell back/failed. Keep approved and deliberate
+    # low-confidence reviews untouched; only retry machine-processing failures.
+    rows = session.execute(
+        select(Report.id, ReportAnalysis.automation_status, ReportAnalysis.extraction_status)
+        .outerjoin(ReportAnalysis, ReportAnalysis.report_id == Report.id)
+        .where(Report.status == "candidate")
+    ).all()
+    exception_ids = set(
+        session.scalars(
+            select(AutomationException.report_id).where(
+                AutomationException.status == "open",
+                AutomationException.exception_type.in_(
+                    ("ai_processing_failed", "ai_verification_failed")
+                ),
+            )
+        ).all()
+    )
+    active_job_ids = set(
+        session.scalars(
+            select(OperationJob.subject_id).where(
+                OperationJob.job_type == "report_enrichment",
+                OperationJob.subject_type == "report",
+                OperationJob.status.in_(["queued", "running"]),
+            )
+        ).all()
+    )
+    retry_ids = [
+        report_id
+        for report_id, automation_status, extraction_status in rows
+        if report_id not in active_job_ids
+        and (
+            automation_status is None
+            or automation_status in {"not_configured", "fallback", "processing"}
+            or extraction_status == "failed"
+            or report_id in exception_ids
+        )
+    ]
     session.commit()
-    return BackfillRead(promoted=int(getattr(result, "rowcount", 0) or 0))
+    for report_id in retry_ids:
+        queue_job(
+            job_type="report_enrichment",
+            subject_type="report",
+            subject_id=report_id,
+            requested_by="ai-backfill",
+        )
+    return BackfillRead(promoted=promoted + len(retry_ids))
 
 
 @router.get("/status", response_model=AutomationStatusRead)
