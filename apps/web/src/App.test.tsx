@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -132,16 +132,48 @@ describe("APT Hunter intelligence feed", () => {
   })
 
   it("renders live reports and extracted evidence", async () => {
+    const user = userEvent.setup()
     render(<App />)
 
     expect(screen.getByRole("heading", { name: "情报流" })).toBeInTheDocument()
     expect(
       (await screen.findAllByText(reports[0].title)).length
     ).toBeGreaterThan(0)
+
+    const reportButton = screen.getByRole("button", {
+      name: new RegExp(reports[0].title),
+    })
+    expect(reportButton).toHaveAttribute("aria-expanded", "false")
+    await user.click(reportButton)
+
+    const inspector = await screen.findByRole("dialog", { name: "材料速览" })
     expect(
-      (await screen.findAllByText("Midnight Blizzard / APT29")).length
+      within(inspector).getAllByText("Midnight Blizzard / APT29").length
     ).toBeGreaterThan(0)
-    expect(screen.getByText("可追溯证据")).toBeInTheDocument()
+    expect(within(inspector).getByText("可追溯证据")).toBeInTheDocument()
+    expect(
+      within(inspector).getByRole("region", { name: "材料速览内容" })
+    ).toHaveClass("overflow-y-auto")
+    expect(
+      within(inspector).getByRole("link", { name: "进入人工复核" })
+    ).toBeInTheDocument()
+    expect(
+      within(inspector).getByRole("link", { name: "打开原文" })
+    ).toBeInTheDocument()
+    expect(reportButton).toHaveAttribute("aria-expanded", "true")
+  })
+
+  it("keeps the feed in an independent scroll region", async () => {
+    render(<App />)
+    await screen.findAllByText(reports[0].title)
+
+    expect(screen.getByTestId("intelligence-feed-workspace")).toHaveClass(
+      "overflow-hidden"
+    )
+    expect(screen.getByRole("region", { name: "情报列表" })).toHaveClass(
+      "flex-1",
+      "overflow-y-auto"
+    )
   })
 
   it("loads the selected report detail", async () => {

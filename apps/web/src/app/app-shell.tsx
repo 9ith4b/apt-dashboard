@@ -47,6 +47,7 @@ export function AppShell() {
 
   return (
     <SidebarProvider
+      className="h-svh min-h-0 overflow-hidden"
       defaultOpen
       style={
         {
@@ -56,7 +57,7 @@ export function AppShell() {
       }
     >
       <AppSidebar />
-      <SidebarInset className="min-w-0 bg-background">
+      <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden bg-background">
         <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-card/95 px-3 backdrop-blur-sm sm:px-6">
           <SidebarTrigger className="md:hidden" />
           <div className="flex min-w-0 items-center gap-5">

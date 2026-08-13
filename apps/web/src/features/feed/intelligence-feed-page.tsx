@@ -21,6 +21,14 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
@@ -94,6 +102,9 @@ function FeedRow({
 }) {
   return (
     <button
+      aria-controls={selected ? "intelligence-inspector" : undefined}
+      aria-expanded={selected}
+      aria-haspopup="dialog"
       className={cn(
         "relative grid w-full grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3 border-b border-border px-4 py-4 text-left transition-colors last:border-b-0 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:grid-cols-[2.75rem_minmax(0,1fr)_11rem]",
         selected &&
@@ -160,107 +171,140 @@ function EntityPreview({
   )
 }
 
-function EventInspector({ report }: { report: ReportDetail | undefined }) {
+function EventInspector({
+  open,
+  report,
+  onOpenChange,
+}: {
+  open: boolean
+  report: ReportDetail | undefined
+  onOpenChange: (open: boolean) => void
+}) {
   const analysis = report?.analysis
   return (
-    <aside className="hidden min-w-0 border-l border-border bg-card xl:flex xl:flex-col">
-      <div className="px-5 py-4">
-        <p className="workspace-kicker">Inspector</p>
-        <h2 className="mt-1 text-lg font-semibold">材料速览</h2>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          自动提取仅供研判，审核后生效
-        </p>
-      </div>
-      <Separator />
-      {!report ? (
-        <div className="space-y-4 p-5">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-28 w-full" />
-          <Skeleton className="h-44 w-full" />
-        </div>
-      ) : (
-        <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-5">
-          <div>
-            <h3 className="text-base leading-6 font-semibold">
-              {report.title}
-            </h3>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <Badge variant={relevanceVariant(report.relevance_score)}>
-                相关性 {report.relevance_score}
-              </Badge>
-              <Badge variant={analysisVariant(report.extraction_status)}>
-                {extractionLabel(report.extraction_status)}
-              </Badge>
-              {analysis?.confidence_auto !== null &&
-                analysis?.confidence_auto !== undefined && (
-                  <Badge variant="outline">
-                    置信度 {analysis.confidence_auto}
-                  </Badge>
-                )}
-            </div>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        aria-describedby="intelligence-inspector-description"
+        className="w-full gap-0 overflow-hidden sm:w-[42rem] sm:max-w-[calc(100vw-2rem)]"
+        id="intelligence-inspector"
+        side="right"
+      >
+        <SheetHeader className="shrink-0 px-4 py-4 pr-12 sm:px-6">
+          <p className="workspace-kicker">Inspector</p>
+          <SheetTitle>材料速览</SheetTitle>
+          <SheetDescription id="intelligence-inspector-description">
+            自动提取仅供研判，审核后生效
+          </SheetDescription>
+        </SheetHeader>
+        <Separator />
+        {!report ? (
+          <div
+            aria-label="材料速览内容"
+            className="flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto overscroll-contain p-5"
+            role="region"
+          >
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-44 w-full" />
           </div>
-          <section className="space-y-2">
-            <h4 className="text-sm font-medium">材料摘要</h4>
-            <p className="line-clamp-6 text-sm leading-6 text-muted-foreground">
-              {analysis?.content_text || report.summary || "正文仍在等待提取。"}
-            </p>
-          </section>
-          <section className="space-y-3">
-            <h4 className="text-sm font-medium">威胁钻石模型</h4>
-            {analysis?.extraction_status === "ready" ? (
-              <div className="grid grid-cols-2 gap-2">
-                <EntityPreview label="攻击者" items={analysis.actors} />
-                <EntityPreview label="能力" items={analysis.capabilities} />
-                <EntityPreview
-                  label="基础设施"
-                  items={analysis.infrastructure}
-                />
-                <EntityPreview label="受害者" items={analysis.victims} />
+        ) : (
+          <div
+            aria-label="材料速览内容"
+            className="flex min-h-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto overscroll-contain p-5 break-words sm:p-6"
+            role="region"
+          >
+            <div>
+              <h3 className="text-base leading-6 font-semibold">
+                {report.title}
+              </h3>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <Badge variant={relevanceVariant(report.relevance_score)}>
+                  相关性 {report.relevance_score}
+                </Badge>
+                <Badge variant={analysisVariant(report.extraction_status)}>
+                  {extractionLabel(report.extraction_status)}
+                </Badge>
+                {analysis?.confidence_auto !== null &&
+                  analysis?.confidence_auto !== undefined && (
+                    <Badge variant="outline">
+                      置信度 {analysis.confidence_auto}
+                    </Badge>
+                  )}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {analysis?.extraction_error || "富化任务尚未完成。"}
+            </div>
+            <section className="flex flex-col gap-2">
+              <h4 className="text-sm font-medium">材料摘要</h4>
+              <p className="text-sm leading-6 whitespace-pre-line text-muted-foreground">
+                {analysis?.content_text ||
+                  report.summary ||
+                  "正文仍在等待提取。"}
               </p>
-            )}
-          </section>
-          <Separator />
-          <section className="space-y-3">
-            <h4 className="text-sm font-medium">可追溯证据</h4>
-            {analysis?.evidence.length ? (
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                {analysis.evidence.slice(0, 4).map((item, index) => (
-                  <li className="line-clamp-2" key={`${item.entity}-${index}`}>
-                    <span className="font-medium text-foreground">
-                      {item.entity}
-                    </span>{" "}
-                    · {item.quote}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">暂无字段级证据。</p>
-            )}
-          </section>
-          <div className="mt-auto grid gap-2">
-            <Button asChild>
-              <Link to="/reviews">进入人工复核</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <a href={report.canonical_url} rel="noreferrer" target="_blank">
-                <ExternalLinkIcon data-icon="inline-start" />
-                打开原文
-              </a>
-            </Button>
+            </section>
+            <section className="flex flex-col gap-3">
+              <h4 className="text-sm font-medium">威胁钻石模型</h4>
+              {analysis?.extraction_status === "ready" ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <EntityPreview label="攻击者" items={analysis.actors} />
+                  <EntityPreview label="能力" items={analysis.capabilities} />
+                  <EntityPreview
+                    label="基础设施"
+                    items={analysis.infrastructure}
+                  />
+                  <EntityPreview label="受害者" items={analysis.victims} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {analysis?.extraction_error || "富化任务尚未完成。"}
+                </p>
+              )}
+            </section>
+            <Separator />
+            <section className="flex flex-col gap-3">
+              <h4 className="text-sm font-medium">可追溯证据</h4>
+              {analysis?.evidence.length ? (
+                <ul className="flex flex-col gap-2 text-sm text-muted-foreground">
+                  {analysis.evidence.map((item, index) => (
+                    <li key={`${item.entity}-${index}`}>
+                      <span className="font-medium text-foreground">
+                        {item.entity}
+                      </span>{" "}
+                      · {item.quote}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  暂无字段级证据。
+                </p>
+              )}
+            </section>
           </div>
-        </div>
-      )}
-    </aside>
+        )}
+        {report ? (
+          <>
+            <Separator />
+            <SheetFooter className="shrink-0 p-4 sm:flex-row sm:px-6">
+              <Button asChild>
+                <Link to="/reviews">进入人工复核</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <a href={report.canonical_url} rel="noreferrer" target="_blank">
+                  <ExternalLinkIcon data-icon="inline-start" />
+                  打开原文
+                </a>
+              </Button>
+            </SheetFooter>
+          </>
+        ) : null}
+      </SheetContent>
+    </Sheet>
   )
 }
 
 export function IntelligenceFeedPage() {
   const [filter, setFilter] = useState("all")
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [inspectorOpen, setInspectorOpen] = useState(false)
   const reportsQuery = useQuery({
     queryKey: reportQueryKey,
     queryFn: listReports,
@@ -273,9 +317,7 @@ export function IntelligenceFeedPage() {
     if (filter === "pending") return report.review_status === "pending"
     return true
   })
-  const selected =
-    visibleReports.find((report) => report.id === selectedId) ??
-    visibleReports[0]
+  const selected = visibleReports.find((report) => report.id === selectedId)
   const detailQuery = useQuery({
     queryKey: ["report", selected?.id],
     queryFn: () => getReport(selected!.id),
@@ -317,14 +359,17 @@ export function IntelligenceFeedPage() {
   ]
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      data-testid="intelligence-feed-workspace"
+    >
       <section className="grid shrink-0 grid-cols-2 border-b border-border bg-surface lg:grid-cols-4">
         {metrics.map((metric) => (
           <Metric key={metric.label} {...metric} />
         ))}
       </section>
-      <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_27rem]">
-        <main className="flex min-w-0 flex-col overflow-hidden p-4 sm:p-6">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <main className="mx-auto flex min-h-0 w-full max-w-[90rem] min-w-0 flex-1 flex-col overflow-hidden p-4 sm:p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-4">
               <div>
@@ -336,7 +381,13 @@ export function IntelligenceFeedPage() {
                 value={filter}
                 variant="outline"
                 spacing={0}
-                onValueChange={(value) => value && setFilter(value)}
+                onValueChange={(value) => {
+                  if (value) {
+                    setFilter(value)
+                    setSelectedId(null)
+                    setInspectorOpen(false)
+                  }
+                }}
               >
                 <ToggleGroupItem value="all">全部</ToggleGroupItem>
                 <ToggleGroupItem value="high">高相关</ToggleGroupItem>
@@ -348,7 +399,11 @@ export function IntelligenceFeedPage() {
               最新优先
             </Button>
           </div>
-          <div className="min-h-0 overflow-y-auto rounded-xl border border-border bg-card">
+          <div
+            aria-label="情报列表"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-xl border border-border bg-card"
+            role="region"
+          >
             {reportsQuery.isPending ? (
               <div className="space-y-3 p-4">
                 {[0, 1, 2].map((item) => (
@@ -384,15 +439,25 @@ export function IntelligenceFeedPage() {
                 <FeedRow
                   key={report.id}
                   report={report}
-                  selected={selected?.id === report.id}
-                  onSelect={setSelectedId}
+                  selected={inspectorOpen && selected?.id === report.id}
+                  onSelect={(reportId) => {
+                    setSelectedId(reportId)
+                    setInspectorOpen(true)
+                  }}
                 />
               ))
             )}
           </div>
         </main>
-        <EventInspector report={detailQuery.data} />
       </div>
+      <EventInspector
+        open={inspectorOpen}
+        report={detailQuery.data}
+        onOpenChange={(open) => {
+          setInspectorOpen(open)
+          if (!open) setSelectedId(null)
+        }}
+      />
     </div>
   )
 }
