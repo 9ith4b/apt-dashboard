@@ -49,6 +49,7 @@ def _indicator_summary(indicator: Indicator | None) -> IndicatorSummary | None:
         confidence=indicator.confidence,
         severity=indicator.severity,
         revoked=indicator.revoked,
+        reviewed_by=indicator.reviewed_by,
         version=indicator.version,
     )
 
@@ -82,6 +83,15 @@ def _observable_summaries(
             select(Indicator).where(Indicator.observable_id.in_(observable_ids))
         )
     }
+    ai_contexts = {
+        enrichment.observable_id: enrichment
+        for enrichment in session.scalars(
+            select(ObservableEnrichment).where(
+                ObservableEnrichment.observable_id.in_(observable_ids),
+                ObservableEnrichment.provider == "ai-context",
+            )
+        )
+    }
     return [
         ObservableSummary(
             id=observable.id,
@@ -95,6 +105,21 @@ def _observable_summaries(
             report_count=report_counts.get(observable.id, 0),
             event_count=event_counts.get(observable.id, 0),
             evidence_count=report_counts.get(observable.id, 0),
+            ai_disposition=(ai_contexts[observable.id].result or {}).get("disposition")
+            if observable.id in ai_contexts
+            else None,
+            ai_role=(ai_contexts[observable.id].result or {}).get("role")
+            if observable.id in ai_contexts
+            else None,
+            ai_confidence=(ai_contexts[observable.id].result or {}).get("confidence")
+            if observable.id in ai_contexts
+            else None,
+            ai_decision_reason=(ai_contexts[observable.id].result or {}).get("decision_reason")
+            if observable.id in ai_contexts
+            else None,
+            ai_decided_at=ai_contexts[observable.id].queried_at
+            if observable.id in ai_contexts
+            else None,
             indicator=_indicator_summary(indicators.get(observable.id)),
         )
         for observable in observables
@@ -135,7 +160,6 @@ def _indicator_read(
         value_normalized=observable.value_normalized,
         pattern=indicator.pattern,
         reviewed_at=indicator.reviewed_at,
-        reviewed_by=indicator.reviewed_by,
         evidence_ids=evidence_ids,
     )
 
@@ -403,7 +427,6 @@ def list_indicators(
             value_normalized=observable.value_normalized,
             pattern=indicator.pattern,
             reviewed_at=indicator.reviewed_at,
-            reviewed_by=indicator.reviewed_by,
             evidence_ids=evidence_by_indicator[indicator.id],
         )
         for indicator, observable in rows
@@ -435,6 +458,8 @@ def update_indicator(
         value = getattr(payload, field)
         if value is not None:
             setattr(indicator, field, value)
+    indicator.reviewed_by = payload.corrected_by
+    indicator.reviewed_at = datetime.now(UTC)
     indicator.version += 1
     session.commit()
     observable = session.get(Observable, indicator.observable_id)

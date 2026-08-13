@@ -28,6 +28,21 @@ def test_normalize_analysis_payload_accepts_common_model_variants() -> None:
                         "evidence": "The actor stole credentials.",
                     }
                 ],
+                "observables": [
+                    {
+                        "type": "domain",
+                        "normalized": "interview-example.com",
+                        "disposition": "malicious",
+                        "role": "payload delivery",
+                        "confidence": "96%",
+                        "indicator_candidate": True,
+                        "purpose": "Malware delivery infrastructure",
+                        "severity": "high",
+                        "ttl_days": 30,
+                        "evidence": "interview-example.com delivered the payload.",
+                        "decision_reason": "The report explicitly describes delivery.",
+                    }
+                ],
                 "contradictions": [{"contradiction": "No contradiction found."}],
                 "decision_reason": "The report contains quoted evidence.",
             }
@@ -39,6 +54,8 @@ def test_normalize_analysis_payload_accepts_common_model_variants() -> None:
     assert result.confidence == 92
     assert result.actors[0].confidence == 90
     assert result.capabilities[0].type == "capability"
+    assert result.observables[0].disposition == "malicious"
+    assert result.observables[0].confidence == 96
     assert result.contradictions == ["No contradiction found."]
 
 

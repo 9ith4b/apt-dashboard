@@ -13,6 +13,7 @@ class IndicatorSummary(BaseModel):
     confidence: int
     severity: str
     revoked: bool
+    reviewed_by: str
     version: int
 
 
@@ -28,6 +29,11 @@ class ObservableSummary(BaseModel):
     report_count: int
     event_count: int
     evidence_count: int
+    ai_disposition: Literal["malicious", "suspicious", "benign", "context"] | None = None
+    ai_role: str | None = None
+    ai_confidence: int | None = None
+    ai_decision_reason: str | None = None
+    ai_decided_at: datetime | None = None
     indicator: IndicatorSummary | None
 
 
@@ -82,7 +88,6 @@ class IndicatorRead(IndicatorSummary):
     value_normalized: str
     pattern: str
     reviewed_at: datetime
-    reviewed_by: str
     evidence_ids: list[UUID]
 
 
@@ -93,3 +98,4 @@ class IndicatorUpdate(BaseModel):
     confidence: int | None = Field(default=None, ge=0, le=100)
     severity: Literal["info", "low", "medium", "high", "critical"] | None = None
     revoked: bool | None = None
+    corrected_by: str = Field(default="local-analyst", min_length=1, max_length=100)

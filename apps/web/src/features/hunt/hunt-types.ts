@@ -6,6 +6,7 @@ export type IndicatorSummary = {
   confidence: number
   severity: "info" | "low" | "medium" | "high" | "critical"
   revoked: boolean
+  reviewed_by: string
   version: number
 }
 
@@ -21,6 +22,11 @@ export type ObservableSummary = {
   report_count: number
   event_count: number
   evidence_count: number
+  ai_disposition: "malicious" | "suspicious" | "benign" | "context" | null
+  ai_role: string | null
+  ai_confidence: number | null
+  ai_decision_reason: string | null
+  ai_decided_at: string | null
   indicator: IndicatorSummary | null
 }
 
@@ -61,7 +67,6 @@ export type Indicator = IndicatorSummary & {
   value_normalized: string
   pattern: string
   reviewed_at: string
-  reviewed_by: string
   evidence_ids: string[]
 }
 

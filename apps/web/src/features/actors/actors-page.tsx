@@ -539,13 +539,13 @@ export function ActorsPage() {
             </EmptyMedia>
             <EmptyTitle>所选日期内没有已确认攻击组织</EmptyTitle>
             <EmptyDescription>
-              审核通过带有攻击组织归因的材料后，标准化组织档案和时间线会自动出现在这里。
+              AI完成带有攻击组织归因的材料分析后，标准化组织档案和时间线会自动出现在这里。
             </EmptyDescription>
           </EmptyHeader>
           <Button asChild>
             <Link to="/reviews">
               <FileCheck2Icon data-icon="inline-start" />
-              前往人工复核
+              查看AI分析
             </Link>
           </Button>
         </Empty>

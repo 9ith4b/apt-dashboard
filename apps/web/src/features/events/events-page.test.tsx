@@ -194,7 +194,7 @@ describe("threat events", () => {
       "[&>*]:shrink-0"
     )
 
-    fireEvent.click(await screen.findByRole("button", { name: "审核合并" }))
+    fireEvent.click(await screen.findByRole("button", { name: "查看合并建议" }))
     expect(
       await screen.findByRole("heading", { name: "审核事件合并" })
     ).toBeInTheDocument()

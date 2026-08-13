@@ -40,7 +40,7 @@ const navigation = [
   { title: "IOC 狩猎", url: "/hunt", icon: CircleDotDashedIcon },
   { title: "关注规则", url: "/watch-rules", icon: BellRingIcon },
   { title: "数据源", url: "/sources", icon: DatabaseIcon },
-  { title: "异常研判", url: "/reviews", icon: FileCheck2Icon },
+  { title: "AI 分析纠错", url: "/reviews", icon: FileCheck2Icon },
   { title: "作业中心", url: "/operations", icon: ListTodoIcon },
   {
     title: "AI 自动化",

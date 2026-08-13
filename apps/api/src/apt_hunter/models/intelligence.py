@@ -710,12 +710,19 @@ class AIProcessingPolicy(TimestampMixin, Base):
             "max_article_chars BETWEEN 5000 AND 200000",
             name="ai_policy_article_chars_range",
         ),
+        CheckConstraint(
+            "indicator_auto_threshold BETWEEN 0 AND 100",
+            name="ai_policy_indicator_threshold_range",
+        ),
     )
 
     key: Mapped[str] = mapped_column(String(32), primary_key=True, default="default")
     automation_enabled: Mapped[bool] = mapped_column(default=False, nullable=False)
+    unattended_mode: Mapped[bool] = mapped_column(default=True, nullable=False)
     require_verification: Mapped[bool] = mapped_column(default=True, nullable=False)
     auto_create_events: Mapped[bool] = mapped_column(default=True, nullable=False)
+    auto_manage_indicators: Mapped[bool] = mapped_column(default=True, nullable=False)
+    indicator_auto_threshold: Mapped[int] = mapped_column(Integer, default=80, nullable=False)
     relevance_threshold: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
     auto_approve_threshold: Mapped[int] = mapped_column(Integer, default=85, nullable=False)
     auto_reject_threshold: Mapped[int] = mapped_column(Integer, default=20, nullable=False)

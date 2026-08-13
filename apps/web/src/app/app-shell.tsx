@@ -5,7 +5,7 @@ import {
   FlaskConicalIcon,
 } from "lucide-react"
 import type { CSSProperties } from "react"
-import { Outlet, useLocation } from "react-router-dom"
+import { Link, Outlet, useLocation } from "react-router-dom"
 
 import { AppSidebar } from "@/app/app-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -27,7 +27,7 @@ const routeTitles: Record<string, string> = {
   "/hunt": "IOC 狩猎",
   "/watch-rules": "关注规则",
   "/sources": "数据源",
-  "/reviews": "异常研判",
+  "/reviews": "AI 分析纠错",
   "/operations": "作业中心",
   "/automation": "AI 自动化",
   "/security": "身份与审计",
@@ -92,9 +92,11 @@ export function AppShell() {
               <CircleUserRoundIcon data-icon="inline-start" />
               <span className="hidden xl:inline">{auth.user.display_name}</span>
             </Button>
-            <Button className="hidden lg:inline-flex">
-              <FlaskConicalIcon data-icon="inline-start" />
-              开始研判
+            <Button asChild className="hidden lg:inline-flex">
+              <Link to="/reviews">
+                <FlaskConicalIcon data-icon="inline-start" />
+                查看AI分析
+              </Link>
             </Button>
           </div>
         </header>

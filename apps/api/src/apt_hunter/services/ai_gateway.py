@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 from apt_hunter.models import AIModelConfig
 from apt_hunter.services.secrets import decrypt_secret
 
-PROMPT_VERSION = "apt-analysis-v2"
-VERIFY_PROMPT_VERSION = "apt-verifier-v2"
+PROMPT_VERSION = "apt-analysis-v3"
+VERIFY_PROMPT_VERSION = "apt-verifier-v3"
 
 
 class AIEntity(BaseModel):
@@ -38,6 +38,20 @@ class AIClaim(BaseModel):
     evidence: str = Field(min_length=1, max_length=5000)
 
 
+class AIObservableAssessment(BaseModel):
+    type: str = Field(min_length=1, max_length=32)
+    normalized: str = Field(min_length=1, max_length=4000)
+    disposition: Literal["malicious", "suspicious", "benign", "context"]
+    role: str = Field(min_length=1, max_length=200)
+    confidence: int = Field(ge=0, le=100)
+    indicator_candidate: bool
+    purpose: str = Field(default="", max_length=500)
+    severity: Literal["info", "low", "medium", "high", "critical"] = "info"
+    ttl_days: int = Field(default=30, ge=1, le=365)
+    evidence: str = Field(min_length=1, max_length=5000)
+    decision_reason: str = Field(min_length=1, max_length=2000)
+
+
 class AIAnalysisPayload(BaseModel):
     relevant: bool
     relevance_score: int = Field(ge=0, le=100)
@@ -56,6 +70,7 @@ class AIAnalysisPayload(BaseModel):
     infrastructure: list[AIEntity] = Field(default_factory=list)
     victims: list[AIEntity] = Field(default_factory=list)
     attack_techniques: list[AITechnique] = Field(default_factory=list)
+    observables: list[AIObservableAssessment] = Field(default_factory=list)
     claims: list[AIClaim] = Field(default_factory=list)
     contradictions: list[str] = Field(default_factory=list)
     decision_reason: str = Field(max_length=3000)
@@ -144,7 +159,7 @@ def _score(value: object, default: int = 0) -> int:
         except ValueError:
             return default
     try:
-        number = float(value) if not isinstance(value, str) else float(raw)
+        number = float(value) if isinstance(value, (int, float)) else float(raw)
     except (TypeError, ValueError):
         return default
     if 0 <= number <= 1:
@@ -264,6 +279,80 @@ def _claim_items(value: object) -> list[dict[str, object]]:
     return normalized
 
 
+def _observable_items(value: object) -> list[dict[str, object]]:
+    normalized: list[dict[str, object]] = []
+    allowed_dispositions = {"malicious", "suspicious", "benign", "context"}
+    allowed_severities = {"info", "low", "medium", "high", "critical"}
+    for item in _items(value):
+        if not isinstance(item, dict):
+            continue
+        observable_type = _clip(item.get("type") or item.get("observable_type"), 32).casefold()
+        value_normalized = _clip(
+            item.get("normalized") or item.get("value_normalized") or item.get("value"),
+            4000,
+        )
+        evidence = _clip(
+            item.get("evidence")
+            or item.get("quote")
+            or item.get("excerpt")
+            or item.get("context"),
+            5000,
+        )
+        disposition = _text(item.get("disposition") or item.get("verdict")).casefold()
+        aliases = {
+            "indicator": "malicious",
+            "malware": "malicious",
+            "unknown": "context",
+            "observable": "context",
+            "legitimate": "benign",
+            "恶意": "malicious",
+            "可疑": "suspicious",
+            "良性": "benign",
+            "上下文": "context",
+        }
+        disposition = aliases.get(disposition, disposition)
+        if (
+            not observable_type
+            or not value_normalized
+            or not evidence
+            or disposition not in allowed_dispositions
+        ):
+            continue
+        severity = _text(item.get("severity")).casefold()
+        if severity not in allowed_severities:
+            severity = "high" if disposition == "malicious" else "info"
+        ttl_value = item.get("ttl_days", 30)
+        try:
+            ttl_days = max(1, min(365, int(float(str(ttl_value)))))
+        except (TypeError, ValueError):
+            ttl_days = 30
+        role = _clip(item.get("role") or item.get("purpose") or disposition, 200)
+        purpose = _clip(item.get("purpose") or item.get("malicious_purpose"), 500)
+        decision_reason = _clip(
+            item.get("decision_reason") or item.get("reason") or evidence,
+            2000,
+        )
+        indicator_candidate = _boolean(
+            item.get("indicator_candidate"), disposition == "malicious"
+        )
+        normalized.append(
+            {
+                "type": observable_type,
+                "normalized": value_normalized,
+                "disposition": disposition,
+                "role": role,
+                "confidence": _score(item.get("confidence"), 0),
+                "indicator_candidate": indicator_candidate,
+                "purpose": purpose,
+                "severity": severity,
+                "ttl_days": ttl_days,
+                "evidence": evidence,
+                "decision_reason": decision_reason,
+            }
+        )
+    return normalized
+
+
 def _string_items(value: object) -> list[str]:
     values: list[str] = []
     for item in _items(value):
@@ -309,6 +398,9 @@ def _normalize_analysis_payload(payload: dict[str, object]) -> dict[str, object]
         "infrastructure": _entity_items(raw.get("infrastructure"), "infrastructure"),
         "victims": _entity_items(raw.get("victims"), "victim"),
         "attack_techniques": _technique_items(raw.get("attack_techniques")),
+        "observables": _observable_items(
+            raw.get("observables") or raw.get("observable_assessments")
+        ),
         "claims": _claim_items(raw.get("claims")),
         "contradictions": _string_items(raw.get("contradictions")),
         "decision_reason": _clip(raw.get("decision_reason") or raw.get("reason"), 3000),
@@ -373,6 +465,7 @@ def analyze_with_model(
     *,
     title: str,
     content: str,
+    observables: list[dict[str, object]] | None = None,
 ) -> tuple[AIAnalysisPayload, int]:
     system = """你是APT威胁情报分析员。分析输入报告并只返回一个JSON对象。禁止补充原文没有的信息。
 每个实体、ATT&CK技术和主张都必须提供原文中的逐字证据片段；无法引用原文的项目必须省略。
@@ -382,11 +475,27 @@ def analyze_with_model(
 实体必须是对象数组，每项包含name,type,confidence,evidence；能力也必须使用同样的对象格式。
 ATT&CK字段为technique_id,name,tactic,confidence,evidence；主张字段为subject,predicate,object,
 statement_type,confidence,evidence；contradictions必须是字符串数组。
+对候选技术对象逐一结合上下文判断，而不是因为格式匹配就判恶意。observables数组每项必须包含：
+type,normalized,disposition,role,confidence,indicator_candidate,purpose,severity,ttl_days,
+evidence,decision_reason。normalized必须原样复制候选对象；disposition只能是malicious、suspicious、
+benign、context。只有原文明确将对象用作攻击基础设施、恶意载荷或检测特征时才能设为malicious和
+indicator_candidate=true；受害者地址、作者邮箱、合法品牌、报告链接和共享基础设施通常是context或benign。
 输出字段：relevant,relevance_score,classification,summary,confidence,actors,capabilities,
-infrastructure,victims,attack_techniques,claims,contradictions,decision_reason。
+infrastructure,victims,attack_techniques,observables,claims,contradictions,decision_reason。
 classification只能是apt_event、malware_analysis、vulnerability_activity、actor_research、
 security_news、irrelevant。"""
-    user = f"报告标题：{title}\n\n报告正文：\n{content}"
+    candidates = [
+        {
+            "type": item.get("type"),
+            "normalized": item.get("normalized"),
+            "evidence": item.get("evidence"),
+        }
+        for item in (observables or [])[:200]
+    ]
+    user = (
+        f"报告标题：{title}\n\n候选技术对象（仅可评估这些对象）：\n"
+        f"{json.dumps(candidates, ensure_ascii=False)}\n\n报告正文：\n{content}"
+    )
     response = _chat(
         config,
         [{"role": "system", "content": system}, {"role": "user", "content": user}],
@@ -449,6 +558,7 @@ def evidence_is_grounded(evidence: str, content: str) -> bool:
 def ground_analysis(
     analysis: AIAnalysisPayload,
     content: str,
+    observable_candidates: list[dict[str, object]] | None = None,
 ) -> tuple[AIAnalysisPayload, int, list[str]]:
     rejected: list[str] = []
     total = 0
@@ -484,6 +594,20 @@ def ground_analysis(
         else:
             rejected.append(f"claim:{claim.subject}:{claim.predicate}")
 
+    candidate_keys = {
+        (str(item.get("type", "")).casefold(), str(item.get("normalized", "")))
+        for item in (observable_candidates or [])
+    }
+    observables: list[AIObservableAssessment] = []
+    for observable in analysis.observables:
+        total += 1
+        key = (observable.type.casefold(), observable.normalized)
+        if evidence_is_grounded(observable.evidence, content) and key in candidate_keys:
+            grounded += 1
+            observables.append(observable)
+        else:
+            rejected.append(f"observable:{observable.type}:{observable.normalized}")
+
     grounded_analysis = analysis.model_copy(
         update={
             "actors": entities(analysis.actors),
@@ -491,6 +615,7 @@ def ground_analysis(
             "infrastructure": entities(analysis.infrastructure),
             "victims": entities(analysis.victims),
             "attack_techniques": techniques,
+            "observables": observables,
             "claims": claims,
         }
     )

@@ -34,8 +34,11 @@ export type AIModelConfigInput = {
 
 export type AIProcessingPolicy = {
   automation_enabled: boolean
+  unattended_mode: boolean
   require_verification: boolean
   auto_create_events: boolean
+  auto_manage_indicators: boolean
+  indicator_auto_threshold: number
   relevance_threshold: number
   auto_approve_threshold: number
   auto_reject_threshold: number

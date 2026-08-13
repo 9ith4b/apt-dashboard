@@ -13,8 +13,11 @@ function jsonResponse(payload: unknown, status = 200) {
 
 const policy = {
   automation_enabled: false,
+  unattended_mode: true,
   require_verification: true,
   auto_create_events: true,
+  auto_manage_indicators: true,
+  indicator_auto_threshold: 80,
   relevance_threshold: 60,
   auto_approve_threshold: 85,
   auto_reject_threshold: 20,
@@ -96,5 +99,17 @@ describe("AI automation settings", () => {
     expect(
       screen.queryByDisplayValue("sk-sensitive-value")
     ).not.toBeInTheDocument()
+  })
+
+  it("makes unattended operation and AI Indicator management explicit", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole("tab", { name: "自动化策略" }))
+    expect(screen.getByText("无人值守运营")).toBeInTheDocument()
+    expect(screen.getByText("AI自动维护 Indicator")).toBeInTheDocument()
+    expect(
+      screen.getByText("证据约束持续生效，但不再成为人工门禁")
+    ).toBeInTheDocument()
   })
 })

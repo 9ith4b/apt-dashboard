@@ -11,9 +11,11 @@ from apt_hunter.services.automation import (
     AutomationOutcome,
     apply_automation_decision,
     automation_enabled,
+    get_or_create_policy,
     run_ai_automation,
 )
 from apt_hunter.services.diamond import extract_diamond
+from apt_hunter.services.indicator_automation import apply_ai_observable_decisions
 from apt_hunter.services.knowledge import persist_report_knowledge
 
 ArticleFetcher = Callable[..., ArticleDocument]
@@ -52,6 +54,7 @@ def analyze_report(
         analysis.extraction_error = None
         article_url = report.canonical_url
         report_title = report.title
+        report_relevance_score = report.relevance_score
         session.commit()
 
     try:
@@ -68,6 +71,7 @@ def analyze_report(
                 title=report_title,
                 content=article.text,
                 deterministic=diamond,
+                initial_relevance_score=report_relevance_score,
             )
         else:
             outcome, evidence = AutomationOutcome(), diamond.evidence
@@ -88,7 +92,7 @@ def analyze_report(
             analysis.infrastructure = outcome.infrastructure or diamond.infrastructure
             analysis.victims = outcome.victims or diamond.victims
             analysis.evidence = evidence
-            analysis.observables = diamond.observables
+            analysis.observables = outcome.observables or diamond.observables
             analysis.attack_techniques = outcome.attack_techniques or diamond.attack_techniques
             analysis.confidence_auto = outcome.confidence or diamond.confidence
             analysis.method_version = outcome.method_version
@@ -109,11 +113,17 @@ def analyze_report(
                 session,
                 report_id=report_id,
                 observed_at=report.published_at or report.created_at,
-                observables=diamond.observables,
+                observables=analysis.observables,
                 techniques=analysis.attack_techniques,
                 method_version=analysis.method_version,
             )
             session.flush()
+            ioc_counts = apply_ai_observable_decisions(
+                session,
+                report=report,
+                candidates=analysis.observables,
+                policy=get_or_create_policy(session),
+            )
             apply_automation_decision(
                 session,
                 report=report,
@@ -126,6 +136,8 @@ def analyze_report(
             "status": "ready",
             "confidence": outcome.confidence or diamond.confidence,
             "automation_status": outcome.automation_status,
+            "ioc_assessed": ioc_counts["assessed"],
+            "ioc_promoted": ioc_counts["promoted"],
         }
     except Exception as exc:
         with SessionLocal() as session:

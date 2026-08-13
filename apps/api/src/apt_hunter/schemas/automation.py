@@ -66,8 +66,11 @@ class AIModelTestRead(BaseModel):
 
 class AIProcessingPolicyUpdate(BaseModel):
     automation_enabled: bool
+    unattended_mode: bool = True
     require_verification: bool = True
     auto_create_events: bool = True
+    auto_manage_indicators: bool = True
+    indicator_auto_threshold: int = Field(default=80, ge=0, le=100)
     relevance_threshold: int = Field(ge=0, le=100)
     auto_approve_threshold: int = Field(ge=0, le=100)
     auto_reject_threshold: int = Field(ge=0, le=100)

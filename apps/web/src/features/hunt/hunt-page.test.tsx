@@ -15,6 +15,11 @@ const observable = {
   report_count: 1,
   event_count: 1,
   evidence_count: 1,
+  ai_disposition: "malicious",
+  ai_role: "钓鱼投递基础设施",
+  ai_confidence: 94,
+  ai_decision_reason: "原文明确说明该域名用于投递恶意软件。",
+  ai_decided_at: "2026-08-02T08:10:00Z",
   indicator: null,
 }
 
@@ -99,13 +104,16 @@ describe("IOC hunting", () => {
     )
   })
 
-  it("separates an Observable from a human-confirmed Indicator promotion", async () => {
+  it("shows the AI verdict and keeps manual promotion as a correction", async () => {
     render(<App />)
 
     expect(
       await screen.findAllByText("interview-example.com")
     ).not.toHaveLength(0)
-    expect(screen.getByText("仅 Observable")).toBeInTheDocument()
+    expect(screen.getAllByText("AI判定恶意").length).toBeGreaterThan(0)
+    expect(
+      await screen.findByText("原文明确说明该域名用于投递恶意软件。")
+    ).toBeInTheDocument()
     expect(
       await screen.findAllByText("Lazarus fake interview campaign")
     ).toHaveLength(2)
@@ -118,9 +126,9 @@ describe("IOC hunting", () => {
       "overflow-x-hidden",
       "[&>*]:shrink-0"
     )
-    fireEvent.click(screen.getByRole("button", { name: "提升为 Indicator" }))
+    fireEvent.click(screen.getByRole("button", { name: "纠正为 Indicator" }))
     expect(
-      await screen.findByRole("heading", { name: "提升为恶意 Indicator" })
+      await screen.findByRole("heading", { name: "人工纠正为恶意 Indicator" })
     ).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText("恶意用途"), {
       target: { value: "Credential phishing infrastructure" },
@@ -131,7 +139,7 @@ describe("IOC hunting", () => {
     fireEvent.change(screen.getByLabelText("严重度"), {
       target: { value: "high" },
     })
-    fireEvent.click(screen.getByRole("button", { name: "确认提升" }))
+    fireEvent.click(screen.getByRole("button", { name: "保存人工纠正" }))
 
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(

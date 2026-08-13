@@ -70,6 +70,20 @@ def mark_job_failed(job_id: UUID, error: Exception) -> None:
         job.version += 1
 
 
+def mark_job_retrying(job_id: UUID, error: Exception) -> None:
+    with SessionLocal.begin() as session:
+        job = session.get(OperationJob, job_id)
+        if job is None or job.status == "canceled":
+            return
+        job.status = "queued"
+        job.progress = 0
+        job.error = f"自动重试：{str(error)[:3800]}"
+        job.attempt += 1
+        job.started_at = None
+        job.finished_at = None
+        job.version += 1
+
+
 def dispatch_job(job: OperationJob) -> None:
     if job.job_type == "source_poll":
         from apt_hunter.tasks.rss import poll_source

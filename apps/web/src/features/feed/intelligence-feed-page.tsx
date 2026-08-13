@@ -285,7 +285,7 @@ function EventInspector({
             <Separator />
             <SheetFooter className="shrink-0 p-4 sm:flex-row sm:px-6">
               <Button asChild>
-                <Link to="/reviews">进入人工复核</Link>
+                <Link to="/reviews">查看AI分析</Link>
               </Button>
               <Button asChild variant="outline">
                 <a href={report.canonical_url} rel="noreferrer" target="_blank">
@@ -345,9 +345,9 @@ export function IntelligenceFeedPage() {
     },
     {
       icon: Clock3Icon,
-      label: "待审核",
+      label: "需关注",
       value: reports.filter((item) => item.review_status === "pending").length,
-      note: "等待人工确认",
+      note: "AI已处理，建议关注",
     },
     {
       icon: InfoIcon,

@@ -120,6 +120,7 @@ def test_observable_hunt_enrich_promote_and_revoke(
     assert listed.status_code == 200
     observable = listed.json()[0]
     assert observable["indicator"] is None
+    assert observable["ai_disposition"] is None
     assert observable["report_count"] == 1
     assert observable["event_count"] == 1
 
@@ -160,6 +161,7 @@ def test_observable_hunt_enrich_promote_and_revoke(
     )
     assert promoted.status_code == 200
     indicator = promoted.json()
+    assert indicator["reviewed_by"] == "local-analyst"
     assert indicator["pattern"] == "[domain-name:value = 'interview-example.com']"
     assert (
         hunt_campaign_client.get("/api/v1/indicators?revoked=false").json()[0]["id"]
@@ -190,6 +192,7 @@ def test_observable_hunt_enrich_promote_and_revoke(
     )
     assert revoked.status_code == 200
     assert revoked.json()["revoked"] is True
+    assert revoked.json()["reviewed_by"] == "local-analyst"
     assert stale.status_code == 409
 
 

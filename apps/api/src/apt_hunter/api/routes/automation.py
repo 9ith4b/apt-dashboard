@@ -239,12 +239,18 @@ def update_policy(
             )
     policy = get_or_create_policy(session)
     was_enabled = policy.automation_enabled
+    was_unattended = policy.unattended_mode
+    was_auto_ioc = policy.auto_manage_indicators
     for field, value in payload.model_dump().items():
         setattr(policy, field, value)
     policy.updated_by = _actor(request)
     session.commit()
     session.refresh(policy)
-    if payload.automation_enabled and not was_enabled:
+    if payload.automation_enabled and (
+        not was_enabled
+        or (payload.unattended_mode and not was_unattended)
+        or (payload.auto_manage_indicators and not was_auto_ioc)
+    ):
         # Do not make the first enablement depend on a separate UI action.
         # The button remains available for explicit retries after model fixes.
         backfill_filtered_reports(session)
@@ -264,13 +270,19 @@ def backfill_filtered_reports(session: DbSession) -> BackfillRead:
     )
     promoted = int(getattr(result, "rowcount", 0) or 0)
 
-    # Enabling AI must also repair the reports that were collected before the
-    # switch, or that previously fell back/failed. Keep approved and deliberate
-    # low-confidence reviews untouched; only retry machine-processing failures.
+    # Enabling AI must also repair reports collected before the switch and
+    # reports that previously fell back/failed. In unattended mode, old review
+    # candidates are retried because a human decision must no longer be a gate.
     rows = session.execute(
-        select(Report.id, ReportAnalysis.automation_status, ReportAnalysis.extraction_status)
+        select(
+            Report.id,
+            Report.status,
+            ReportAnalysis.automation_status,
+            ReportAnalysis.extraction_status,
+            ReportAnalysis.observables,
+        )
         .outerjoin(ReportAnalysis, ReportAnalysis.report_id == Report.id)
-        .where(Report.status == "candidate")
+        .where(Report.status.in_(["candidate", "approved"]))
     ).all()
     exception_ids = set(
         session.scalars(
@@ -291,15 +303,31 @@ def backfill_filtered_reports(session: DbSession) -> BackfillRead:
             )
         ).all()
     )
+    retry_automation_statuses = {"not_configured", "fallback", "processing"}
+    if policy.unattended_mode:
+        retry_automation_statuses.add("needs_review")
     retry_ids = [
         report_id
-        for report_id, automation_status, extraction_status in rows
+        for report_id, report_status, automation_status, extraction_status, observables in rows
         if report_id not in active_job_ids
         and (
-            automation_status is None
-            or automation_status in {"not_configured", "fallback", "processing"}
-            or extraction_status == "failed"
-            or report_id in exception_ids
+            (
+                report_status == "candidate"
+                and (
+                    automation_status is None
+                    or automation_status in retry_automation_statuses
+                    or extraction_status == "failed"
+                    or report_id in exception_ids
+                )
+            )
+            or (
+                report_status == "approved"
+                and policy.auto_manage_indicators
+                and not any(
+                    isinstance(item, dict) and item.get("ai_disposition")
+                    for item in (observables or [])
+                )
+            )
         )
     ]
     session.commit()

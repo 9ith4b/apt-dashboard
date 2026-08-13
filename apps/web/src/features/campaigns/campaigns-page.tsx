@@ -357,11 +357,11 @@ function AssignEventDialog({
               </EmptyMedia>
               <EmptyTitle>没有可加入的已确认事件</EmptyTitle>
               <EmptyDescription>
-                先在审核队列确认事件，或当前全部事件已经属于该 Campaign。
+                等待AI生成更多事件，或当前全部事件已经属于该 Campaign。
               </EmptyDescription>
             </EmptyHeader>
             <Button asChild variant="outline">
-              <Link to="/reviews">前往人工复核</Link>
+              <Link to="/reviews">查看AI分析</Link>
             </Button>
           </Empty>
         )}
@@ -461,7 +461,8 @@ function CampaignDetailPanel({
           <CardTitle>Campaign 阶段时间线</CardTitle>
           <CardDescription>
             {formatDateTime(campaign.first_seen)} 至{" "}
-            {formatDateTime(campaign.last_seen)}；每项均为人工确认归属。
+            {formatDateTime(campaign.last_seen)}
+            ；系统持续沉淀，人工可修正事件归属。
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -579,7 +580,7 @@ export function CampaignsPage() {
               <h1 className="text-xl font-semibold">Campaign 时间线</h1>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              人工确认事件归属，按攻击阶段持续沉淀长期行动
+              基于AI事件持续追踪长期行动，人工按需整理或修正阶段归属
             </p>
           </div>
           <Button onClick={() => setCreateOpen(true)}>

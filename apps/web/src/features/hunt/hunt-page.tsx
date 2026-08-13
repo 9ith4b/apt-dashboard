@@ -81,6 +81,24 @@ const SEVERITY_LABELS: Record<Indicator["severity"], string> = {
   critical: "严重",
 }
 
+const AI_DISPOSITION_LABELS: Record<
+  NonNullable<ObservableSummary["ai_disposition"]>,
+  string
+> = {
+  malicious: "AI判定恶意",
+  suspicious: "AI判定可疑",
+  benign: "AI判定良性",
+  context: "AI判定上下文",
+}
+
+function aiDispositionVariant(
+  disposition: ObservableSummary["ai_disposition"]
+): "confirmed" | "candidate" | "secondary" {
+  if (disposition === "malicious") return "confirmed"
+  if (disposition === "suspicious") return "candidate"
+  return "secondary"
+}
+
 function dateInput(value: Date) {
   return value.toISOString().slice(0, 10)
 }
@@ -116,10 +134,16 @@ function ObservableRow({
           >
             {observable.indicator.revoked
               ? "已撤销 Indicator"
-              : "有效 Indicator"}
+              : observable.indicator.reviewed_by === "ai-automation"
+                ? "AI维护 Indicator"
+                : "人工纠正 Indicator"}
+          </Badge>
+        ) : observable.ai_disposition ? (
+          <Badge variant={aiDispositionVariant(observable.ai_disposition)}>
+            {AI_DISPOSITION_LABELS[observable.ai_disposition]}
           </Badge>
         ) : (
-          <Badge variant="candidate">仅 Observable</Badge>
+          <Badge variant="candidate">等待AI判断</Badge>
         )}
       </div>
       <p className="mt-2 line-clamp-2 font-mono text-xs break-all">
@@ -165,7 +189,7 @@ function PromotionDialog({
         evidence_ids: evidenceIds,
       }),
     onSuccess: () => {
-      toast.success("Observable 已提升为 Indicator")
+      toast.success("已记录人工纠正并创建 Indicator")
       void queryClient.invalidateQueries({ queryKey: observableQueryKey })
       void queryClient.invalidateQueries({ queryKey: indicatorQueryKey })
       void queryClient.invalidateQueries({
@@ -188,9 +212,9 @@ function PromotionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>提升为恶意 Indicator</DialogTitle>
+          <DialogTitle>人工纠正为恶意 Indicator</DialogTitle>
           <DialogDescription>
-            “在文章中出现”本身不代表恶意。请提交用途、有效期、置信度和支持证据。
+            仅在AI判断有误或需要补充结论时使用。人工纠正会被审计，并阻止后续AI覆盖该Indicator。
           </DialogDescription>
         </DialogHeader>
         <Card className="gap-2 py-4">
@@ -302,7 +326,7 @@ function PromotionDialog({
             onClick={() => mutation.mutate()}
           >
             <ShieldAlertIcon data-icon="inline-start" />
-            确认提升
+            保存人工纠正
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -356,10 +380,16 @@ function ObservableDetailPanel({
                 <ShieldCheckIcon data-icon="inline-start" />
                 {observable.indicator.revoked
                   ? "Indicator 已撤销"
-                  : "已确认 Indicator"}
+                  : observable.indicator.reviewed_by === "ai-automation"
+                    ? "AI维护 Indicator"
+                    : "人工纠正 Indicator"}
+              </Badge>
+            ) : observable.ai_disposition ? (
+              <Badge variant={aiDispositionVariant(observable.ai_disposition)}>
+                {AI_DISPOSITION_LABELS[observable.ai_disposition]}
               </Badge>
             ) : (
-              <Badge variant="candidate">未判定恶意</Badge>
+              <Badge variant="candidate">等待AI判断</Badge>
             )}
           </div>
           <h2 className="font-mono text-lg leading-8 font-semibold break-all sm:text-xl">
@@ -382,7 +412,7 @@ function ObservableDetailPanel({
           {!observable.indicator && (
             <Button onClick={() => setPromoteOpen(true)}>
               <ArrowUpCircleIcon data-icon="inline-start" />
-              提升为 Indicator
+              纠正为 Indicator
             </Button>
           )}
         </div>
@@ -402,12 +432,55 @@ function ObservableDetailPanel({
         ))}
       </div>
 
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle>AI自动判断</CardTitle>
+              <CardDescription>
+                模型结合原文语境判断该对象的角色，不以格式匹配直接认定恶意。
+              </CardDescription>
+            </div>
+            {observable.ai_disposition ? (
+              <Badge variant={aiDispositionVariant(observable.ai_disposition)}>
+                {AI_DISPOSITION_LABELS[observable.ai_disposition]}
+                {observable.ai_confidence !== null
+                  ? ` · ${observable.ai_confidence}%`
+                  : ""}
+              </Badge>
+            ) : (
+              <Badge variant="candidate">待自动处理</Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-[minmax(10rem,0.35fr)_minmax(0,1fr)]">
+          <div className="rounded-lg border p-3">
+            <p className="text-xs text-muted-foreground">上下文角色</p>
+            <p className="mt-1 text-sm">
+              {observable.ai_role ?? "等待AI完成上下文判断"}
+            </p>
+          </div>
+          <div className="rounded-lg border p-3">
+            <p className="text-xs text-muted-foreground">判断理由</p>
+            <p className="mt-1 text-sm leading-6">
+              {observable.ai_decision_reason ??
+                "该对象尚未经过新版本AI分析；后续采集或历史材料回填会自动补齐。"}
+            </p>
+            {observable.ai_decided_at ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                更新于 {formatDateTime(observable.ai_decided_at)}
+              </p>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+
       {observable.indicator && (
         <Card>
           <CardHeader>
             <CardTitle>恶意判断</CardTitle>
             <CardDescription>
-              人工确认的用途、有效期和置信度，与 Observable 观测事实分开保存。
+              AI默认自动维护用途、有效期和置信度；人工纠正后切换为人工覆盖并保留审计记录。
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -552,9 +625,9 @@ function IndicatorList({ indicators }: { indicators: Indicator[] }) {
           <EmptyMedia variant="icon">
             <ShieldAlertIcon />
           </EmptyMedia>
-          <EmptyTitle>还没有人工确认的 Indicator</EmptyTitle>
+          <EmptyTitle>还没有AI或人工确认的 Indicator</EmptyTitle>
           <EmptyDescription>
-            在 Observable 详情中核对恶意用途和证据后再执行提升。
+            AI会在新材料处理时自动判断并创建；分析员也可以在详情中纠正遗漏。
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -587,6 +660,11 @@ function IndicatorList({ indicators }: { indicators: Indicator[] }) {
               <Badge variant="outline">置信度 {indicator.confidence}%</Badge>
               <Badge variant="outline">
                 {indicator.evidence_ids.length} 条证据
+              </Badge>
+              <Badge variant="outline">
+                {indicator.reviewed_by === "ai-automation"
+                  ? "AI自动维护"
+                  : "人工覆盖"}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -654,7 +732,7 @@ export function HuntPage() {
               <h1 className="text-xl font-semibold">IOC 狩猎</h1>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              查询观测事实、事件上下文与人工确认的恶意 Indicator
+              AI结合报告语境自动区分Observable与Indicator；人工只需在阅读时纠错
             </p>
           </div>
           <form

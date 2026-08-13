@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from uuid import UUID
@@ -53,6 +54,7 @@ class AutomationOutcome:
     infrastructure: list[dict[str, object]] | None = None
     victims: list[dict[str, object]] | None = None
     attack_techniques: list[dict[str, object]] | None = None
+    observables: list[dict[str, object]] | None = None
     exception_type: str | None = None
     exception_title: str | None = None
     exception_description: str | None = None
@@ -165,8 +167,101 @@ def _ai_evidence(analysis: AIAnalysisPayload) -> list[dict[str, object]]:
     return evidence[:80]
 
 
+def _merge_observable_assessments(
+    candidates: list[dict[str, object]], analysis: AIAnalysisPayload
+) -> list[dict[str, object]]:
+    assessments = {
+        (item.type.casefold(), item.normalized): item for item in analysis.observables
+    }
+    merged: list[dict[str, object]] = []
+    for candidate in candidates:
+        key = (
+            str(candidate.get("type", "")).casefold(),
+            str(candidate.get("normalized", "")),
+        )
+        assessment = assessments.get(key)
+        if assessment is None:
+            merged.append(candidate)
+            continue
+        merged.append(
+            {
+                **candidate,
+                "evidence": assessment.evidence,
+                "confidence": assessment.confidence,
+                "ai_disposition": assessment.disposition,
+                "ai_role": assessment.role,
+                "ai_confidence": assessment.confidence,
+                "indicator_candidate": assessment.indicator_candidate,
+                "indicator_purpose": assessment.purpose,
+                "indicator_severity": assessment.severity,
+                "indicator_ttl_days": assessment.ttl_days,
+                "ai_decision_reason": assessment.decision_reason,
+            }
+        )
+    return merged
+
+
 def _int_value(value: object, fallback: int) -> int:
     return int(value) if isinstance(value, (int, float, str)) else fallback
+
+
+def _fallback_outcome(
+    *,
+    deterministic: DiamondResult,
+    policy_values: Mapping[str, object],
+    initial_relevance_score: int,
+    model_config_id: UUID | None,
+    exception_type: str,
+    exception_title: str,
+    exception_description: str,
+    exception_details: dict[str, object] | None = None,
+) -> AutomationOutcome:
+    has_threat_context = any(
+        (
+            deterministic.actors,
+            deterministic.capabilities,
+            deterministic.infrastructure,
+            deterministic.victims,
+            deterministic.attack_techniques,
+        )
+    )
+    fallback_score = max(
+        initial_relevance_score,
+        deterministic.confidence if has_threat_context else 0,
+    )
+    unattended = bool(policy_values["unattended_mode"])
+    relevant = fallback_score >= _int_value(policy_values["relevance_threshold"], 60)
+    if unattended:
+        review_status = "approved" if relevant else "rejected"
+        report_status = "approved" if relevant else "rejected"
+    else:
+        review_status = "pending"
+        report_status = "candidate"
+    return AutomationOutcome(
+        enabled=True,
+        automation_status="fallback",
+        review_status=review_status,
+        report_status=report_status,
+        method_version=f"ai-fallback:{PROMPT_VERSION}",
+        model_config_id=model_config_id,
+        relevance_score=fallback_score,
+        classification="apt_event" if relevant else "irrelevant",
+        decision_reason=(
+            "AI连续调用异常，系统已使用本地提取信号完成降级决策；"
+            "该结果已保留异常记录，可在阅读时纠正。"
+        ),
+        confidence=deterministic.confidence,
+        actors=deterministic.actors,
+        capabilities=deterministic.capabilities,
+        infrastructure=deterministic.infrastructure,
+        victims=deterministic.victims,
+        attack_techniques=deterministic.attack_techniques,
+        observables=deterministic.observables,
+        exception_type=exception_type,
+        exception_title=exception_title,
+        exception_description=exception_description,
+        exception_details=exception_details or {},
+    )
 
 
 def run_ai_automation(
@@ -175,6 +270,7 @@ def run_ai_automation(
     title: str,
     content: str,
     deterministic: DiamondResult,
+    initial_relevance_score: int = 0,
 ) -> tuple[AutomationOutcome, list[dict[str, object]]]:
     with SessionLocal() as session:
         policy = get_or_create_policy(session)
@@ -182,6 +278,7 @@ def run_ai_automation(
             return AutomationOutcome(), deterministic.evidence
         config = default_model_config(session)
         policy_values = {
+            "unattended_mode": policy.unattended_mode,
             "require_verification": policy.require_verification,
             "relevance_threshold": policy.relevance_threshold,
             "auto_approve_threshold": policy.auto_approve_threshold,
@@ -194,12 +291,14 @@ def run_ai_automation(
 
     if config is None:
         return (
-            AutomationOutcome(
-                enabled=True,
-                automation_status="fallback",
+            _fallback_outcome(
+                deterministic=deterministic,
+                policy_values=policy_values,
+                initial_relevance_score=initial_relevance_score,
+                model_config_id=None,
                 exception_type="model_not_configured",
                 exception_title="AI自动化尚未配置默认模型",
-                exception_description="报告已使用确定性提取安全降级，需要配置并测试默认模型。",
+                exception_description="报告已使用本地提取完成降级决策。",
             ),
             deterministic.evidence,
         )
@@ -213,8 +312,17 @@ def run_ai_automation(
         input_chars=len(scoped_content),
     )
     try:
-        raw_analysis, latency_ms = analyze_with_model(config, title=title, content=scoped_content)
-        grounded, local_coverage, rejected = ground_analysis(raw_analysis, scoped_content)
+        raw_analysis, latency_ms = analyze_with_model(
+            config,
+            title=title,
+            content=scoped_content,
+            observables=deterministic.observables,
+        )
+        grounded, local_coverage, rejected = ground_analysis(
+            raw_analysis,
+            scoped_content,
+            deterministic.observables,
+        )
         _finish_run(
             run_id,
             result=grounded.model_dump(mode="json"),
@@ -226,13 +334,13 @@ def run_ai_automation(
     except Exception as exc:
         _finish_run(run_id, error=exc)
         return (
-            AutomationOutcome(
-                enabled=True,
-                automation_status="fallback",
+            _fallback_outcome(
+                deterministic=deterministic,
+                policy_values=policy_values,
+                initial_relevance_score=initial_relevance_score,
                 model_config_id=config.id,
-                method_version=f"ai-fallback:{PROMPT_VERSION}",
                 exception_type="ai_processing_failed",
-                exception_title="AI分析失败，已安全降级",
+                exception_title="AI分析失败，已自动降级并安排重试",
                 exception_description=str(exc)[:1000],
                 exception_details={"model": config.model},
             ),
@@ -293,7 +401,7 @@ def run_ai_automation(
         _int_value(verification.get("confidence"), grounded.confidence),
     )
     contradictions = bool(grounded.contradictions) or bool(verification.get("contradiction_found"))
-    auto_approved = (
+    gates_approved = (
         grounded.relevant
         and grounded.relevance_score >= int(policy_values["relevance_threshold"])
         and verified_confidence >= int(policy_values["auto_approve_threshold"])
@@ -302,17 +410,18 @@ def run_ai_automation(
         and not contradictions
         and not verification_failed
     )
-    auto_rejected = (
+    gates_rejected = (
         not grounded.relevant
         and grounded.relevance_score <= int(policy_values["auto_reject_threshold"])
         and bool(verification.get("approved"))
         and not verification_failed
     )
-    if auto_approved:
+    unattended = bool(policy_values["unattended_mode"])
+    if gates_approved or (unattended and grounded.relevant):
         automation_status = "auto_approved"
         review_status = "approved"
         report_status = "approved"
-    elif auto_rejected:
+    elif gates_rejected or (unattended and not grounded.relevant):
         automation_status = "auto_rejected"
         review_status = "rejected"
         report_status = "rejected"
@@ -324,7 +433,8 @@ def run_ai_automation(
     exception_type: str | None = None
     exception_title: str | None = None
     exception_description: str | None = None
-    if automation_status == "needs_review":
+    gates_need_attention = not gates_approved and not gates_rejected
+    if automation_status == "needs_review" or (unattended and gates_need_attention):
         if verification_failed:
             exception_type = "ai_verification_failed"
             exception_title = "AI验证阶段失败"
@@ -337,7 +447,11 @@ def run_ai_automation(
         else:
             exception_type = "low_confidence"
             exception_title = "AI置信度不足"
-        exception_description = grounded.decision_reason
+        exception_description = (
+            f"AI已在无人值守模式下继续处理：{grounded.decision_reason}"
+            if unattended
+            else grounded.decision_reason
+        )
 
     primary_actors = [item.model_dump(mode="json") for item in grounded.actors]
     primary_capabilities = [item.model_dump(mode="json") for item in grounded.capabilities]
@@ -364,6 +478,10 @@ def run_ai_automation(
         infrastructure=_merge_entities(primary_infrastructure, deterministic.infrastructure),
         victims=_merge_entities(primary_victims, deterministic.victims),
         attack_techniques=_merge_techniques(primary_techniques, deterministic.attack_techniques),
+        observables=_merge_observable_assessments(
+            deterministic.observables,
+            grounded,
+        ),
         exception_type=exception_type,
         exception_title=exception_title,
         exception_description=exception_description,
@@ -435,6 +553,25 @@ def apply_automation_decision(
 ) -> None:
     _resolve_stale_ai_exceptions(session, report, outcome)
     _record_exception(session, report, outcome)
+    human_override = bool(
+        analysis.reviewed_by
+        and analysis.reviewed_by != "ai-automation"
+        and any(
+            value is not None
+            for value in (
+                analysis.reviewed_actors,
+                analysis.reviewed_capabilities,
+                analysis.reviewed_infrastructure,
+                analysis.reviewed_victims,
+            )
+        )
+    )
+    if human_override:
+        report.status = {
+            "approved": "approved",
+            "rejected": "rejected",
+        }.get(analysis.review_status, "candidate")
+        return
     if outcome.review_status == "pending":
         return
     now = datetime.now(UTC)

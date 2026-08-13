@@ -65,16 +65,16 @@ import {
 import { cn } from "@/lib/utils"
 
 const REVIEW_LABELS = {
-  pending: "待研判",
-  approved: "已通过",
-  rejected: "已驳回",
+  pending: "需关注",
+  approved: "AI已发布",
+  rejected: "AI已排除",
 } as const
 
 const AUTOMATION_LABELS: Record<string, string> = {
   not_configured: "规则降级",
   processing: "AI处理中",
   auto_approved: "AI自动确认",
-  needs_review: "需要异常研判",
+  needs_review: "建议人工关注",
   auto_rejected: "AI自动排除",
   fallback: "AI安全降级",
 }
@@ -173,7 +173,7 @@ function EnrichmentState({
         <AlertDescription>
           <p>
             {report.analysis?.extraction_error ??
-              "任务已进入后台队列，页面会自动刷新。正文抓取完成后即可人工复核。"}
+              "任务已进入后台队列，页面会自动刷新。正文抓取完成后AI会继续分析并自动沉淀。"}
           </p>
           {failed && (
             <Button
@@ -326,9 +326,9 @@ function ReviewWorkbench({
         <section>
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h3 className="font-semibold">钻石模型字段复核</h3>
+              <h3 className="font-semibold">钻石模型字段纠错</h3>
               <p className="text-sm text-muted-foreground">
-                保留可信字段、排除误报，或补充人工确认的实体。
+                AI结果默认直接使用；仅在阅读时发现错误后删除误报或补充实体。
               </p>
             </div>
             <Button
@@ -569,9 +569,9 @@ export function ReviewsPage() {
       <aside className="flex min-h-0 flex-col border-b border-border bg-card lg:border-r lg:border-b-0">
         <div className="space-y-3 p-4">
           <div>
-            <h2 className="font-semibold">异常研判队列</h2>
+            <h2 className="font-semibold">AI分析与纠错</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              仅处理AI证据不足、归因冲突和低置信度材料
+              AI已自动处理全量材料；这里集中查看结果并按需纠错
             </p>
           </div>
           <div

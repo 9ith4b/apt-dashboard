@@ -332,14 +332,23 @@ function PolicyForm({
   const [form, setForm] = useState(policy)
 
   const numericFields = [
-    ["relevance_threshold", "APT相关性阈值", "低于此值的报告不会自动确认。"],
+    ["relevance_threshold", "APT相关性阈值", "用于标记需要关注的边界判断。"],
     [
       "auto_approve_threshold",
       "自动确认阈值",
-      "同时满足证据和验证门禁才会自动发布。",
+      "低于此值会记录异常；无人值守模式下不阻断AI结论。",
     ],
     ["auto_reject_threshold", "自动排除阈值", "AI明确判断无关时自动排除。"],
-    ["minimum_evidence_coverage", "最低证据覆盖率", "低于此值进入异常研判。"],
+    [
+      "minimum_evidence_coverage",
+      "最低证据覆盖率",
+      "低于此值会进入异常关注清单。",
+    ],
+    [
+      "indicator_auto_threshold",
+      "Indicator自动维护阈值",
+      "达到阈值且被AI判定为恶意时自动创建或更新Indicator。",
+    ],
   ] as const
 
   return (
@@ -347,7 +356,7 @@ function PolicyForm({
       <CardHeader>
         <CardTitle>自动化决策策略</CardTitle>
         <CardDescription>
-          所有文章经过AI处理；阈值决定AI可自动执行的范围，而不是是否调用AI。
+          AI默认完成采集后的判断与沉淀；人工修正作为高优先级覆盖，而不是处理门禁。
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -368,6 +377,24 @@ function PolicyForm({
                 <FieldTitle>启用全量AI处理</FieldTitle>
                 <FieldDescription>
                   新采集文章不再由关键词决定去留，而是进入AI语义分析。
+                </FieldDescription>
+              </FieldLabel>
+            </Field>
+            <Field orientation="horizontal">
+              <Switch
+                checked={form.unattended_mode}
+                id="unattended-mode"
+                onCheckedChange={(unattendedMode) =>
+                  setForm((current) => ({
+                    ...current,
+                    unattended_mode: unattendedMode,
+                  }))
+                }
+              />
+              <FieldLabel htmlFor="unattended-mode">
+                <FieldTitle>无人值守运营</FieldTitle>
+                <FieldDescription>
+                  AI成功完成后直接发布或排除；低置信度与证据缺口只记录异常，不等待人工放行。
                 </FieldDescription>
               </FieldLabel>
             </Field>
@@ -403,7 +430,25 @@ function PolicyForm({
               <FieldLabel htmlFor="auto-events">
                 <FieldTitle>自动生成确认事件</FieldTitle>
                 <FieldDescription>
-                  通过全部门禁后自动创建事件、组织关系和狩猎知识。
+                  根据AI结论自动创建事件、组织关系和狩猎知识。
+                </FieldDescription>
+              </FieldLabel>
+            </Field>
+            <Field orientation="horizontal">
+              <Switch
+                checked={form.auto_manage_indicators}
+                id="auto-indicators"
+                onCheckedChange={(autoManageIndicators) =>
+                  setForm((current) => ({
+                    ...current,
+                    auto_manage_indicators: autoManageIndicators,
+                  }))
+                }
+              />
+              <FieldLabel htmlFor="auto-indicators">
+                <FieldTitle>AI自动维护 Indicator</FieldTitle>
+                <FieldDescription>
+                  结合原文语境自动区分Observable与恶意Indicator，并管理置信度、有效期和撤销状态。
                 </FieldDescription>
               </FieldLabel>
             </Field>
@@ -522,8 +567,11 @@ export function AutomationPage() {
     mutationFn: (policy: AIProcessingPolicy) =>
       updateProcessingPolicy({
         automation_enabled: policy.automation_enabled,
+        unattended_mode: policy.unattended_mode,
         require_verification: policy.require_verification,
         auto_create_events: policy.auto_create_events,
+        auto_manage_indicators: policy.auto_manage_indicators,
+        indicator_auto_threshold: policy.indicator_auto_threshold,
         relevance_threshold: policy.relevance_threshold,
         auto_approve_threshold: policy.auto_approve_threshold,
         auto_reject_threshold: policy.auto_reject_threshold,
@@ -578,7 +626,7 @@ export function AutomationPage() {
       icon: ShieldCheckIcon,
     },
     {
-      label: "待异常研判",
+      label: "需关注异常",
       value: automationStatus?.open_exceptions ?? 0,
       icon: CircleAlertIcon,
     },
@@ -598,7 +646,7 @@ export function AutomationPage() {
             <h1 className="text-xl font-semibold">AI 自动化</h1>
           </div>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            全量AI语义分析、独立证据验证和分级自动决策；人工只处理异常和冲突。
+            AI持续完成语义分析、证据验证、事件沉淀与IOC维护；人工只在阅读时纠错或按需关注异常。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -768,9 +816,9 @@ export function AutomationPage() {
             <div className="flex flex-col gap-4">
               <Alert>
                 <CheckCircle2Icon />
-                <AlertTitle>安全门禁始终生效</AlertTitle>
+                <AlertTitle>证据约束持续生效，但不再成为人工门禁</AlertTitle>
                 <AlertDescription>
-                  AI推断不会自动升级为事实；无原文证据、归因冲突或验证失败都会进入异常研判。
+                  无原文证据、归因冲突或验证失败都会留下异常与审计记录；无人值守模式仍会按AI最终判断继续处理。
                 </AlertDescription>
               </Alert>
               <PolicyForm

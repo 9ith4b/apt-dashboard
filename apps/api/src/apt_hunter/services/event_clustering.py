@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.orm import Session
 
 from apt_hunter.models import (
+    AIProcessingPolicy,
     EventActor,
     EventMergeCandidate,
     EventObservable,
@@ -22,6 +23,7 @@ from apt_hunter.services.knowledge import sync_event_knowledge
 
 _TOKEN_PATTERN = re.compile(r"[a-z0-9][a-z0-9_-]{2,}", re.IGNORECASE)
 MERGE_THRESHOLD = 45
+AUTO_MERGE_THRESHOLD = 90
 
 
 def _candidate_id(source_event_id: UUID, target_event_id: UUID) -> UUID:
@@ -145,6 +147,7 @@ def generate_merge_candidates(session: Session, source_event_id: UUID) -> int:
     event_ids = [source_event_id, *[event.id for event in targets]]
     actors, observables, techniques, victims = _feature_sets(session, event_ids)
     created = 0
+    best_auto_candidate: tuple[int, UUID] | None = None
     for target in targets:
         score, features = score_event_similarity(
             source=source,
@@ -161,6 +164,10 @@ def generate_merge_candidates(session: Session, source_event_id: UUID) -> int:
         if score < MERGE_THRESHOLD:
             continue
         candidate_id = _candidate_id(source_event_id, target.id)
+        if score >= AUTO_MERGE_THRESHOLD and (
+            best_auto_candidate is None or score > best_auto_candidate[0]
+        ):
+            best_auto_candidate = (score, candidate_id)
         if session.get_bind().dialect.name == "postgresql":
             session.execute(
                 postgresql_insert(EventMergeCandidate)
@@ -197,6 +204,27 @@ def generate_merge_candidates(session: Session, source_event_id: UUID) -> int:
             elif existing.status == "pending":
                 existing.score = score
                 existing.features = features
+    policy = session.get(AIProcessingPolicy, "default")
+    if (
+        best_auto_candidate is not None
+        and policy is not None
+        and policy.automation_enabled
+        and policy.unattended_mode
+    ):
+        session.flush()
+        score, candidate_id = best_auto_candidate
+        candidate = session.get(EventMergeCandidate, candidate_id)
+        if candidate is not None and candidate.status == "pending":
+            decide_merge_candidate(
+                session,
+                candidate_id,
+                decision="approved",
+                reason=(
+                    "无人值守自动合并：攻击者、技术对象、ATT&CK技术、受害者与时间窗口"
+                    f"的综合相似度为 {score}%。人工可在事件页撤销。"
+                ),
+                expected_version=candidate.version,
+            )
     return created
 
 

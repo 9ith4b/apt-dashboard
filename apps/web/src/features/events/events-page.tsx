@@ -637,15 +637,15 @@ export function EventsPage() {
           <EmptyMedia variant="icon">
             <GitBranchIcon />
           </EmptyMedia>
-          <EmptyTitle>还没有已确认的威胁事件</EmptyTitle>
+          <EmptyTitle>还没有AI沉淀的威胁事件</EmptyTitle>
           <EmptyDescription>
-            在人工复核队列中修正钻石模型字段并通过审核，系统会在这里生成事件。
+            新材料完成AI分析后会自动生成事件；可在AI分析纠错页查看运行结果。
           </EmptyDescription>
         </EmptyHeader>
         <Button asChild>
           <Link to="/reviews">
             <FileCheck2Icon data-icon="inline-start" />
-            前往人工复核
+            查看AI分析
           </Link>
         </Button>
       </Empty>
@@ -662,7 +662,7 @@ export function EventsPage() {
           <div>
             <h1 className="text-xl font-semibold">威胁事件</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              由人工确认的情报材料持续沉淀而成
+              由AI持续分析情报材料并自动沉淀，人工纠错优先保留
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -685,17 +685,17 @@ export function EventsPage() {
             <Alert>
               <GitMergeIcon />
               <AlertTitle>
-                {pendingMerges.length} 个相似事件等待人工判断
+                {pendingMerges.length} 个低确定性相似事件可按需校正
               </AlertTitle>
               <AlertDescription>
-                系统不会自动合并；请检查共同攻击者、Observable、技术和时间窗口。
+                高确定性关系由系统自动处理；这些边界候选不阻断事件沉淀，可检查共同攻击者、Observable、技术和时间窗口。
               </AlertDescription>
               <AlertAction>
                 <Button
                   onClick={() => setReviewCandidate(pendingMerges[0])}
                   size="sm"
                 >
-                  审核合并
+                  查看合并建议
                 </Button>
               </AlertAction>
             </Alert>
