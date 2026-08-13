@@ -381,19 +381,23 @@ function ReviewWorkbench({
           </div>
         </section>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
-          <Card>
-            <CardHeader>
+        <div
+          className="grid items-stretch gap-4 xl:h-[calc(100vh-8rem)] xl:max-h-[56rem] xl:min-h-[28rem] xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]"
+          data-testid="extracted-evidence-grid"
+        >
+          <Card className="min-h-0" data-testid="extracted-text-card">
+            <CardHeader className="shrink-0">
               <CardTitle>提取正文</CardTitle>
               <CardDescription>
                 抓取于 {formatDateTime(analysis.fetched_at)}
                 ，用于证据复核与后续事件沉淀。
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-h-0 flex-1">
               <p
                 aria-label="报告正文"
-                className="max-h-96 overflow-y-auto text-sm leading-7 whitespace-pre-line text-muted-foreground"
+                className="max-h-96 overflow-y-auto overscroll-contain text-sm leading-7 whitespace-pre-line text-muted-foreground xl:h-full xl:max-h-none xl:min-h-0"
+                data-testid="extracted-text-scroll"
                 role="region"
                 tabIndex={0}
               >
@@ -401,14 +405,17 @@ function ReviewWorkbench({
               </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
+          <Card className="min-h-0">
+            <CardHeader className="shrink-0">
               <CardTitle>证据索引</CardTitle>
               <CardDescription>
                 {analysis.evidence.length} 条字段级引用
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent
+              className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain"
+              data-testid="evidence-index-scroll"
+            >
               {analysis.evidence.length ? (
                 analysis.evidence.slice(0, 12).map((evidence, index) => (
                   <div

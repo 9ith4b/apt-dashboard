@@ -111,6 +111,21 @@ describe("analyst review workbench", () => {
     expect(await screen.findByText("Lazarus Group")).toBeInTheDocument()
     expect(screen.getByText("Social engineering")).toBeInTheDocument()
     expect(screen.getByText("Technology companies")).toBeInTheDocument()
+    expect(screen.getByTestId("extracted-text-card")).toHaveClass("min-h-0")
+    expect(screen.getByTestId("extracted-evidence-grid")).toHaveClass(
+      "xl:h-[calc(100vh-8rem)]",
+      "xl:max-h-[56rem]"
+    )
+    expect(screen.getByTestId("extracted-text-scroll")).toHaveClass(
+      "max-h-96",
+      "overflow-y-auto",
+      "xl:h-full",
+      "xl:max-h-none"
+    )
+    expect(screen.getByTestId("evidence-index-scroll")).toHaveClass(
+      "flex-1",
+      "overflow-y-auto"
+    )
     expect(
       screen.getByText("未从正文中提取到，可由分析员手动补充。")
     ).toBeInTheDocument()

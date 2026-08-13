@@ -51,6 +51,14 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -471,28 +479,40 @@ function AddSourceDialog({
 }
 
 function SourceInspector({
+  open,
   source,
+  onOpenChange,
   onPoll,
   pollPending,
 }: {
+  open: boolean
   source: Source | undefined
+  onOpenChange: (open: boolean) => void
   onPoll: (source: Source) => void
   pollPending: boolean
 }) {
   return (
-    <aside
-      className="hidden min-h-0 min-w-0 overflow-hidden border-l border-border bg-card xl:flex xl:flex-col"
-      data-testid="source-inspector"
-    >
-      <div className="p-5">
-        <h2 className="text-lg font-semibold">数据源详情</h2>
-      </div>
-      <Separator />
-      {source ? (
-        <div className="flex min-h-0 flex-1 flex-col">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        aria-describedby="source-inspector-description"
+        className="w-full gap-0 overflow-hidden sm:w-[28rem] sm:max-w-[calc(100vw-2rem)]"
+        data-testid="source-inspector"
+        id="source-inspector"
+        side="right"
+      >
+        <SheetHeader className="shrink-0 px-5 py-4 pr-12">
+          <SheetTitle>数据源详情</SheetTitle>
+          <SheetDescription id="source-inspector-description">
+            查看连接器状态、调度信息并按需立即采集
+          </SheetDescription>
+        </SheetHeader>
+        <Separator />
+        {source ? (
           <div
-            className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain p-5 [&>*]:shrink-0"
+            aria-label="数据源详情内容"
+            className="flex min-h-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto overscroll-contain p-5 break-words [&>*]:shrink-0"
             data-testid="source-detail-scroll"
+            role="region"
           >
             <div className="flex items-start gap-3">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
@@ -547,43 +567,50 @@ function SourceInspector({
               </Card>
             ) : null}
           </div>
-          <div className="shrink-0 border-t border-border p-5">
-            <Button
-              className="w-full"
-              disabled={pollPending}
-              onClick={() => onPoll(source)}
-            >
-              <SendIcon data-icon="inline-start" />
-              {pollPending ? "正在加入队列…" : "立即采集"}
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <Empty className="border-0">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <DatabaseIcon />
-            </EmptyMedia>
-            <EmptyTitle>尚未选择数据源</EmptyTitle>
-            <EmptyDescription>选择左侧来源查看采集状态。</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      )}
-    </aside>
+        ) : (
+          <Empty className="min-h-0 flex-1 border-0">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <DatabaseIcon />
+              </EmptyMedia>
+              <EmptyTitle>尚未选择数据源</EmptyTitle>
+              <EmptyDescription>
+                选择列表中的来源查看采集状态。
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+        {source ? (
+          <>
+            <Separator />
+            <SheetFooter className="shrink-0 p-4 sm:px-5">
+              <Button
+                className="w-full"
+                disabled={pollPending}
+                onClick={() => onPoll(source)}
+              >
+                <SendIcon data-icon="inline-start" />
+                {pollPending ? "正在加入队列…" : "立即采集"}
+              </Button>
+            </SheetFooter>
+          </>
+        ) : null}
+      </SheetContent>
+    </Sheet>
   )
 }
 
 export function SourcesPage() {
   const queryClient = useQueryClient()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [inspectorOpen, setInspectorOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const sourcesQuery = useQuery({
     queryKey: sourceQueryKey,
     queryFn: listSources,
   })
   const sources = sourcesQuery.data ?? []
-  const selectedSource =
-    sources.find((source) => source.id === selectedId) ?? sources[0]
+  const selectedSource = sources.find((source) => source.id === selectedId)
 
   const createMutation = useMutation({
     mutationFn: createSource,
@@ -593,6 +620,7 @@ export function SourcesPage() {
         ...current,
       ])
       setSelectedId(created.id)
+      setInspectorOpen(true)
       setAddOpen(false)
       toast.success("数据源已创建", {
         description: "定时调度器将在下一轮开始采集。",
@@ -635,10 +663,10 @@ export function SourcesPage() {
 
   return (
     <div
-      className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden xl:grid-cols-[minmax(0,1fr)_24rem]"
+      className="flex min-h-0 min-w-0 flex-1 overflow-hidden"
       data-testid="sources-workspace"
     >
-      <main className="workspace-page overflow-hidden">
+      <main className="workspace-page min-w-0 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">采集连接器</h2>
@@ -751,8 +779,21 @@ export function SourcesPage() {
                         "cursor-pointer",
                         selectedSource?.id === source.id && "bg-accent/55"
                       )}
+                      aria-selected={selectedSource?.id === source.id}
                       key={source.id}
-                      onClick={() => setSelectedId(source.id)}
+                      onClick={() => {
+                        setSelectedId(source.id)
+                        setInspectorOpen(true)
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault()
+                          setSelectedId(source.id)
+                          setInspectorOpen(true)
+                        }
+                      }}
+                      tabIndex={0}
                     >
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -804,7 +845,12 @@ export function SourcesPage() {
         </Card>
       </main>
       <SourceInspector
+        open={inspectorOpen}
         source={selectedSource}
+        onOpenChange={(open) => {
+          setInspectorOpen(open)
+          if (!open) setSelectedId(null)
+        }}
         onPoll={(source) => pollMutation.mutate(source.id)}
         pollPending={pollMutation.isPending}
       />

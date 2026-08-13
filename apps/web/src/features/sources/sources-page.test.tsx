@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -66,6 +66,7 @@ describe("source connector management", () => {
   })
 
   it("renders live source status and report counts", async () => {
+    const user = userEvent.setup()
     render(<App />)
 
     expect(
@@ -79,11 +80,22 @@ describe("source connector management", () => {
     expect(screen.getByTestId("source-list-scroll")).toHaveClass(
       "overflow-auto"
     )
-    expect(screen.getByTestId("source-detail-scroll")).toHaveClass(
+    expect(
+      screen.queryByRole("dialog", { name: "数据源详情" })
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByText("Microsoft Security Blog"))
+
+    const inspector = await screen.findByRole("dialog", {
+      name: "数据源详情",
+    })
+    expect(within(inspector).getByTestId("source-detail-scroll")).toHaveClass(
       "overflow-y-auto",
       "[&>*]:shrink-0"
     )
-    expect(screen.getByRole("button", { name: "立即采集" })).toBeInTheDocument()
+    expect(
+      within(inspector).getByRole("button", { name: "立即采集" })
+    ).toBeInTheDocument()
   })
 
   it("validates and creates an RSS source", async () => {
