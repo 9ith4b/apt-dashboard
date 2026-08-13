@@ -73,6 +73,17 @@ describe("source connector management", () => {
     ).toBeGreaterThan(0)
     expect(screen.getAllByText("12").length).toBeGreaterThan(0)
     expect(screen.getAllByText("正常").length).toBeGreaterThan(0)
+    expect(screen.getByTestId("sources-workspace")).toHaveClass(
+      "overflow-hidden"
+    )
+    expect(screen.getByTestId("source-list-scroll")).toHaveClass(
+      "overflow-auto"
+    )
+    expect(screen.getByTestId("source-detail-scroll")).toHaveClass(
+      "overflow-y-auto",
+      "[&>*]:shrink-0"
+    )
+    expect(screen.getByRole("button", { name: "立即采集" })).toBeInTheDocument()
   })
 
   it("validates and creates an RSS source", async () => {

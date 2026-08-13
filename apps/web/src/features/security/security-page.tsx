@@ -305,7 +305,10 @@ export function SecurityPage() {
   ]
 
   return (
-    <main className="workspace-page">
+    <main
+      className="workspace-page overflow-hidden"
+      data-testid="security-workspace"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">身份与安全审计</h2>
@@ -350,25 +353,28 @@ export function SecurityPage() {
           </Card>
         ))}
       </section>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-        <Card>
-          <CardHeader>
+      <div className="grid min-h-0 flex-1 grid-rows-2 gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] xl:grid-rows-1">
+        <Card className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+          <CardHeader className="shrink-0">
             <CardTitle>账户与角色</CardTitle>
             <CardDescription>
               管理员可配置来源和作业；分析员可研判；只读角色仅查看。
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent
+            className="min-h-0 flex-1 overflow-auto overscroll-contain p-0"
+            data-testid="account-list-scroll"
+          >
             {users.isLoading ? (
               <Skeleton className="m-5 h-40" />
             ) : (
-              <Table>
-                <TableHeader>
+              <Table className="min-w-[36rem] table-fixed">
+                <TableHeader className="sticky top-0 bg-card">
                   <TableRow>
-                    <TableHead>账户</TableHead>
-                    <TableHead>角色</TableHead>
-                    <TableHead>最近登录</TableHead>
-                    <TableHead className="text-right">启用</TableHead>
+                    <TableHead className="w-[28%]">账户</TableHead>
+                    <TableHead className="w-[28%]">角色</TableHead>
+                    <TableHead className="w-[28%]">最近登录</TableHead>
+                    <TableHead className="w-[16%] text-right">启用</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -418,24 +424,27 @@ export function SecurityPage() {
             )}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
+        <Card className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+          <CardHeader className="shrink-0">
             <CardTitle>最近审计</CardTitle>
             <CardDescription>
               登录、拒绝和写操作均保留请求标识与结果。
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent
+            className="min-h-0 flex-1 overflow-auto overscroll-contain p-0"
+            data-testid="audit-list-scroll"
+          >
             {audit.isLoading ? (
               <Skeleton className="m-5 h-40" />
             ) : (
-              <Table>
-                <TableHeader>
+              <Table className="min-w-[40rem] table-fixed">
+                <TableHeader className="sticky top-0 bg-card">
                   <TableRow>
-                    <TableHead>时间 / 操作者</TableHead>
-                    <TableHead>操作</TableHead>
-                    <TableHead>对象</TableHead>
-                    <TableHead>结果</TableHead>
+                    <TableHead className="w-[20%]">时间 / 操作者</TableHead>
+                    <TableHead className="w-[30%]">操作</TableHead>
+                    <TableHead className="w-[34%]">对象</TableHead>
+                    <TableHead className="w-[16%]">结果</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -447,10 +456,10 @@ export function SecurityPage() {
                           {item.actor_username ?? "匿名"}
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
+                      <TableCell className="align-top font-mono text-xs break-all whitespace-normal">
                         {item.action}
                       </TableCell>
-                      <TableCell className="max-w-36 truncate">
+                      <TableCell className="align-top text-xs break-all whitespace-normal">
                         {item.object_type ?? "—"}
                         {item.object_id ? ` / ${item.object_id}` : ""}
                       </TableCell>

@@ -182,6 +182,17 @@ describe("threat events", () => {
       "href",
       report.canonical_url
     )
+    expect(screen.getByTestId("events-workspace")).toHaveClass(
+      "overflow-hidden"
+    )
+    expect(screen.getByTestId("event-list-scroll")).toHaveClass(
+      "overflow-y-auto"
+    )
+    expect(screen.getByTestId("event-detail-scroll")).toHaveClass(
+      "overflow-y-auto",
+      "overflow-x-hidden",
+      "[&>*]:shrink-0"
+    )
 
     fireEvent.click(await screen.findByRole("button", { name: "审核合并" }))
     expect(

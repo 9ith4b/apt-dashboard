@@ -338,7 +338,10 @@ function ObservableDetailPanel({
   ]
 
   return (
-    <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6">
+    <div
+      className="flex min-h-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto overscroll-contain p-4 sm:p-6 [&>*]:shrink-0"
+      data-testid="observable-detail-scroll"
+    >
       <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
         <div className="max-w-4xl min-w-0">
           <div className="mb-2 flex flex-wrap gap-2">
@@ -429,8 +432,8 @@ function ObservableDetailPanel({
         </Card>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
+      <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle>报告与原文证据</CardTitle>
             <CardDescription>按最近出现时间排列</CardDescription>
@@ -452,7 +455,7 @@ function ObservableDetailPanel({
             ))}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle>事件时间线</CardTitle>
             <CardDescription>仅展示已确认事件关联</CardDescription>
@@ -559,7 +562,7 @@ function IndicatorList({ indicators }: { indicators: Indicator[] }) {
   }
 
   return (
-    <div className="grid gap-3 overflow-y-auto p-4 sm:grid-cols-2 sm:p-6 2xl:grid-cols-3">
+    <div className="grid min-h-0 gap-3 overflow-y-auto overscroll-contain p-4 sm:grid-cols-2 sm:p-6 2xl:grid-cols-3">
       {indicators.map((indicator) => (
         <Card key={indicator.id}>
           <CardHeader>
@@ -639,7 +642,10 @@ export function HuntPage() {
   })
 
   return (
-    <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]">
+    <div
+      className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden"
+      data-testid="hunt-workspace"
+    >
       <header className="border-b border-border bg-surface px-4 py-4 sm:px-6">
         <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
           <div>
@@ -769,8 +775,11 @@ export function HuntPage() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="grid min-h-0 lg:grid-cols-[22rem_minmax(0,1fr)]">
-          <aside className="max-h-80 overflow-y-auto border-b border-border bg-card lg:max-h-none lg:border-r lg:border-b-0">
+        <div className="grid min-h-0 grid-rows-[minmax(10rem,18rem)_minmax(0,1fr)] overflow-hidden lg:grid-cols-[22rem_minmax(0,1fr)] lg:grid-rows-1">
+          <aside
+            className="min-h-0 overflow-y-auto overscroll-contain border-b border-border bg-card lg:border-r lg:border-b-0"
+            data-testid="observable-list-scroll"
+          >
             {observables.map((observable) => (
               <ObservableRow
                 key={observable.id}
@@ -780,7 +789,7 @@ export function HuntPage() {
               />
             ))}
           </aside>
-          <main className="flex min-h-0 min-w-0 flex-col">
+          <main className="flex min-h-0 min-w-0 flex-col overflow-hidden">
             {detailQuery.isPending ? (
               <div className="flex flex-col gap-5 p-6">
                 <Skeleton className="h-24 w-3/4" />

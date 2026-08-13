@@ -83,6 +83,12 @@ describe("operations page", () => {
     expect(await screen.findByText("Vendor RSS")).toBeInTheDocument()
     expect(screen.getByText("Feed request timed out")).toBeInTheDocument()
     expect(screen.getByText("APT29 phishing report")).toBeInTheDocument()
+    expect(screen.getByTestId("operations-workspace")).toHaveClass(
+      "overflow-hidden"
+    )
+    expect(screen.getByTestId("operation-list-scroll")).toHaveClass(
+      "overflow-auto"
+    )
     await user.click(screen.getByRole("button", { name: "重试" }))
     await user.click(screen.getByRole("button", { name: "取消" }))
 

@@ -196,8 +196,8 @@ function DiamondPanel({
 
 function KnowledgePanels({ event }: { event: ThreatEventDetail }) {
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
-      <Card>
+    <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+      <Card className="min-w-0 overflow-hidden">
         <CardHeader>
           <CardTitle>Observable</CardTitle>
           <CardDescription>
@@ -205,20 +205,20 @@ function KnowledgePanels({ event }: { event: ThreatEventDetail }) {
             Indicator。
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0 overflow-hidden">
           {event.observables.length ? (
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead>类型 / 值</TableHead>
-                  <TableHead>范围</TableHead>
-                  <TableHead className="text-right">置信度</TableHead>
+                  <TableHead className="w-[62%]">类型 / 值</TableHead>
+                  <TableHead className="w-[20%]">范围</TableHead>
+                  <TableHead className="w-[18%] text-right">置信度</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {event.observables.map((observable) => (
                   <TableRow key={observable.id}>
-                    <TableCell className="max-w-80 whitespace-normal">
+                    <TableCell className="max-w-0 whitespace-normal">
                       <p className="font-mono text-xs break-all">
                         {observable.value_normalized}
                       </p>
@@ -226,7 +226,9 @@ function KnowledgePanels({ event }: { event: ThreatEventDetail }) {
                         {observable.type} · 证据：{observable.evidence}
                       </p>
                     </TableCell>
-                    <TableCell>{observable.scope}</TableCell>
+                    <TableCell className="break-words">
+                      {observable.scope}
+                    </TableCell>
                     <TableCell className="text-right">
                       {observable.confidence}%
                     </TableCell>
@@ -242,7 +244,7 @@ function KnowledgePanels({ event }: { event: ThreatEventDetail }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="min-w-0 overflow-hidden">
         <CardHeader>
           <CardTitle>MITRE ATT&amp;CK 映射</CardTitle>
           <CardDescription>
@@ -283,7 +285,10 @@ function KnowledgePanels({ event }: { event: ThreatEventDetail }) {
 
 function EventDetail({ event }: { event: ThreatEventDetail }) {
   return (
-    <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-4 sm:p-6">
+    <div
+      className="flex min-h-0 flex-1 flex-col gap-6 overflow-x-hidden overflow-y-auto overscroll-contain p-4 sm:p-6 [&>*]:shrink-0"
+      data-testid="event-detail-scroll"
+    >
       <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
         <div className="max-w-4xl">
           <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -648,7 +653,10 @@ export function EventsPage() {
   }
 
   return (
-    <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(0,1fr)]">
+    <div
+      className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden"
+      data-testid="events-workspace"
+    >
       <header className="border-b border-border bg-surface px-4 py-4 sm:px-6">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <div>
@@ -706,8 +714,11 @@ export function EventsPage() {
         </div>
       )}
 
-      <div className="grid min-h-0 lg:grid-cols-[22rem_minmax(0,1fr)]">
-        <aside className="max-h-80 overflow-y-auto border-b border-border bg-card lg:max-h-none lg:border-r lg:border-b-0">
+      <div className="grid min-h-0 grid-rows-[minmax(10rem,18rem)_minmax(0,1fr)] overflow-hidden lg:grid-cols-[22rem_minmax(0,1fr)] lg:grid-rows-1">
+        <aside
+          className="min-h-0 overflow-y-auto overscroll-contain border-b border-border bg-card lg:border-r lg:border-b-0"
+          data-testid="event-list-scroll"
+        >
           {events.map((event) => (
             <EventRow
               event={event}
@@ -717,7 +728,7 @@ export function EventsPage() {
             />
           ))}
         </aside>
-        <main className="flex min-h-0 min-w-0 flex-col">
+        <main className="flex min-h-0 min-w-0 flex-col overflow-hidden">
           {detailQuery.isPending ? (
             <div className="flex flex-col gap-5 p-6">
               <Skeleton className="h-20 w-3/4" />

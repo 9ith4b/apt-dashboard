@@ -480,64 +480,74 @@ function SourceInspector({
   pollPending: boolean
 }) {
   return (
-    <aside className="hidden min-w-0 border-l border-border bg-card xl:flex xl:flex-col">
+    <aside
+      className="hidden min-h-0 min-w-0 overflow-hidden border-l border-border bg-card xl:flex xl:flex-col"
+      data-testid="source-inspector"
+    >
       <div className="p-5">
         <h2 className="text-lg font-semibold">数据源详情</h2>
       </div>
       <Separator />
       {source ? (
-        <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-5">
-          <div className="flex items-start gap-3">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
-              <SourceIcon type={source.type} />
-            </span>
-            <div className="min-w-0">
-              <h3 className="truncate font-semibold">{source.name}</h3>
-              <div className="mt-2 flex items-center gap-2">
-                <Badge variant="outline">{SOURCE_LABELS[source.type]}</Badge>
-                <HealthBadge status={source.health_status} />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div
+            className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain p-5 [&>*]:shrink-0"
+            data-testid="source-detail-scroll"
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
+                <SourceIcon type={source.type} />
+              </span>
+              <div className="min-w-0">
+                <h3 className="truncate font-semibold">{source.name}</h3>
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge variant="outline">{SOURCE_LABELS[source.type]}</Badge>
+                  <HealthBadge status={source.health_status} />
+                </div>
               </div>
             </div>
-          </div>
-          <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-3 text-sm">
-            <dt className="text-muted-foreground">采集目标</dt>
-            <dd className="truncate" title={sourceSummary(source)}>
-              {sourceSummary(source)}
-            </dd>
-            {source.type === "x" || source.type === "telegram" ? (
-              <>
-                <dt className="text-muted-foreground">服务端凭据</dt>
-                <dd>
-                  <Badge
-                    variant={
-                      source.credential_configured ? "confirmed" : "candidate"
-                    }
-                  >
-                    {source.credential_configured ? "已配置" : "待配置"}
-                  </Badge>
-                </dd>
-              </>
+            <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-3 text-sm">
+              <dt className="text-muted-foreground">采集目标</dt>
+              <dd className="break-all" title={sourceSummary(source)}>
+                {sourceSummary(source)}
+              </dd>
+              {source.type === "x" || source.type === "telegram" ? (
+                <>
+                  <dt className="text-muted-foreground">服务端凭据</dt>
+                  <dd>
+                    <Badge
+                      variant={
+                        source.credential_configured ? "confirmed" : "candidate"
+                      }
+                    >
+                      {source.credential_configured ? "已配置" : "待配置"}
+                    </Badge>
+                  </dd>
+                </>
+              ) : null}
+              <dt className="text-muted-foreground">采集间隔</dt>
+              <dd>每 {source.poll_interval_minutes} 分钟</dd>
+              <dt className="text-muted-foreground">最近成功</dt>
+              <dd>{formatDateTime(source.last_success_at)}</dd>
+              <dt className="text-muted-foreground">下次运行</dt>
+              <dd>{formatDateTime(source.next_poll_at)}</dd>
+              <dt className="text-muted-foreground">已收报告</dt>
+              <dd>{source.report_count}</dd>
+              <dt className="text-muted-foreground">连续失败</dt>
+              <dd>{source.consecutive_failures}</dd>
+            </dl>
+            {source.last_error ? (
+              <Card className="border-destructive/30 bg-destructive/5">
+                <CardHeader>
+                  <CardTitle className="text-sm">最近错误</CardTitle>
+                  <CardDescription className="break-words">
+                    {source.last_error}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
             ) : null}
-            <dt className="text-muted-foreground">采集间隔</dt>
-            <dd>每 {source.poll_interval_minutes} 分钟</dd>
-            <dt className="text-muted-foreground">最近成功</dt>
-            <dd>{formatDateTime(source.last_success_at)}</dd>
-            <dt className="text-muted-foreground">下次运行</dt>
-            <dd>{formatDateTime(source.next_poll_at)}</dd>
-            <dt className="text-muted-foreground">已收报告</dt>
-            <dd>{source.report_count}</dd>
-            <dt className="text-muted-foreground">连续失败</dt>
-            <dd>{source.consecutive_failures}</dd>
-          </dl>
-          {source.last_error ? (
-            <Card className="border-destructive/30 bg-destructive/5">
-              <CardHeader>
-                <CardTitle className="text-sm">最近错误</CardTitle>
-                <CardDescription>{source.last_error}</CardDescription>
-              </CardHeader>
-            </Card>
-          ) : null}
-          <div className="mt-auto">
+          </div>
+          <div className="shrink-0 border-t border-border p-5">
             <Button
               className="w-full"
               disabled={pollPending}
@@ -624,8 +634,11 @@ export function SourcesPage() {
   ).length
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_24rem]">
-      <main className="workspace-page">
+    <div
+      className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden xl:grid-cols-[minmax(0,1fr)_24rem]"
+      data-testid="sources-workspace"
+    >
+      <main className="workspace-page overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">采集连接器</h2>
@@ -672,14 +685,17 @@ export function SourcesPage() {
             note={`${attention} 个来源需关注`}
           />
         </section>
-        <Card className="min-h-0 flex-1">
-          <CardHeader className="border-b">
+        <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <CardHeader className="shrink-0 border-b">
             <CardTitle>数据源</CardTitle>
             <CardDescription>
               启用后由任务调度器按间隔采集；限流与失败会自动退避。
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent
+            className="min-h-0 flex-1 overflow-auto overscroll-contain p-0"
+            data-testid="source-list-scroll"
+          >
             {sourcesQuery.isLoading ? (
               <div className="flex flex-col gap-3 p-5">
                 {[0, 1, 2].map((item) => (
@@ -717,8 +733,8 @@ export function SourcesPage() {
                 </EmptyContent>
               </Empty>
             ) : (
-              <Table>
-                <TableHeader>
+              <Table className="min-w-[48rem]">
+                <TableHeader className="sticky top-0 bg-card">
                   <TableRow>
                     <TableHead>名称</TableHead>
                     <TableHead>状态</TableHead>

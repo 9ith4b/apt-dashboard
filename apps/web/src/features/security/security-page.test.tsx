@@ -76,6 +76,13 @@ describe("identity and audit administration", () => {
 
     expect(await screen.findByText("Security Admin")).toBeInTheDocument()
     expect(screen.getByText("POST sources")).toBeInTheDocument()
+    expect(screen.getByTestId("security-workspace")).toHaveClass(
+      "overflow-hidden"
+    )
+    expect(screen.getByTestId("account-list-scroll")).toHaveClass(
+      "overflow-auto"
+    )
+    expect(screen.getByTestId("audit-list-scroll")).toHaveClass("overflow-auto")
     await user.click(screen.getByRole("button", { name: "创建账户" }))
     await user.click(screen.getByRole("button", { name: "创建账户" }))
     expect(screen.getByText("用户名至少需要 2 个字符。")).toBeInTheDocument()

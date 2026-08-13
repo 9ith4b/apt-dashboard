@@ -109,6 +109,15 @@ describe("IOC hunting", () => {
     expect(
       await screen.findAllByText("Lazarus fake interview campaign")
     ).toHaveLength(2)
+    expect(screen.getByTestId("hunt-workspace")).toHaveClass("overflow-hidden")
+    expect(screen.getByTestId("observable-list-scroll")).toHaveClass(
+      "overflow-y-auto"
+    )
+    expect(screen.getByTestId("observable-detail-scroll")).toHaveClass(
+      "overflow-y-auto",
+      "overflow-x-hidden",
+      "[&>*]:shrink-0"
+    )
     fireEvent.click(screen.getByRole("button", { name: "提升为 Indicator" }))
     expect(
       await screen.findByRole("heading", { name: "提升为恶意 Indicator" })

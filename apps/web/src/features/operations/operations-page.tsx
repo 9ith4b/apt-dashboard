@@ -99,7 +99,10 @@ export function OperationsPage() {
   const successCount = jobs.filter((job) => job.status === "succeeded").length
 
   return (
-    <div className="workspace-page">
+    <div
+      className="workspace-page overflow-hidden"
+      data-testid="operations-workspace"
+    >
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <div className="flex items-center gap-2">
@@ -158,14 +161,17 @@ export function OperationsPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <CardHeader className="shrink-0">
           <CardTitle>作业记录</CardTitle>
           <CardDescription>
             页面每 5 秒刷新；取消不强制终止正在执行的代码
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent
+          className="min-h-0 flex-1 overflow-auto overscroll-contain p-0"
+          data-testid="operation-list-scroll"
+        >
           {jobsQuery.isError ? (
             <Empty>
               <EmptyHeader>
@@ -189,8 +195,8 @@ export function OperationsPage() {
               </EmptyHeader>
             </Empty>
           ) : (
-            <Table>
-              <TableHeader>
+            <Table className="min-w-[48rem]">
+              <TableHeader className="sticky top-0 bg-card">
                 <TableRow>
                   <TableHead>类型 / 对象</TableHead>
                   <TableHead>状态</TableHead>
