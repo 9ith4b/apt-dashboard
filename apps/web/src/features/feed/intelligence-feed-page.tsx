@@ -285,7 +285,11 @@ function EventInspector({
             <Separator />
             <SheetFooter className="shrink-0 p-4 sm:flex-row sm:px-6">
               <Button asChild>
-                <Link to="/reviews">查看AI分析</Link>
+                <Link
+                  to={`/reviews?report=${encodeURIComponent(report.id)}&status=${encodeURIComponent(report.review_status ?? "pending")}`}
+                >
+                  查看AI分析
+                </Link>
               </Button>
               <Button asChild variant="outline">
                 <a href={report.canonical_url} rel="noreferrer" target="_blank">

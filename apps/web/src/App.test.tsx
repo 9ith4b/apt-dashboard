@@ -156,7 +156,7 @@ describe("APT Hunter intelligence feed", () => {
     ).toHaveClass("overflow-y-auto")
     expect(
       within(inspector).getByRole("link", { name: "查看AI分析" })
-    ).toBeInTheDocument()
+    ).toHaveAttribute("href", `/reviews?report=${reports[0].id}&status=pending`)
     expect(
       within(inspector).getByRole("link", { name: "打开原文" })
     ).toBeInTheDocument()

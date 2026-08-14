@@ -13,7 +13,8 @@ import {
   XIcon,
   ZapIcon,
 } from "lucide-react"
-import { useState } from "react"
+import { type Ref, useEffect, useRef, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -70,6 +71,12 @@ const REVIEW_LABELS = {
   rejected: "AI已排除",
 } as const
 
+type ReviewStatus = keyof typeof REVIEW_LABELS
+
+function reviewStatusFromQuery(value: string | null): ReviewStatus {
+  return value === "approved" || value === "rejected" ? value : "pending"
+}
+
 const AUTOMATION_LABELS: Record<string, string> = {
   not_configured: "规则降级",
   processing: "AI处理中",
@@ -83,18 +90,22 @@ function QueueRow({
   report,
   selected,
   onSelect,
+  rowRef,
 }: {
   report: ReportSummary
   selected: boolean
   onSelect: (id: string) => void
+  rowRef?: Ref<HTMLButtonElement>
 }) {
   return (
     <button
+      aria-current={selected ? "page" : undefined}
       className={cn(
         "w-full border-b border-border p-4 text-left transition-colors last:border-b-0 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         selected && "bg-accent/55 ring-1 ring-primary ring-inset"
       )}
       onClick={() => onSelect(report.id)}
+      ref={rowRef}
       type="button"
     >
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -532,20 +543,36 @@ function ReviewWorkbench({
 }
 
 export function ReviewsPage() {
-  const [reviewStatus, setReviewStatus] =
-    useState<keyof typeof REVIEW_LABELS>("pending")
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selectedId = searchParams.get("report")
+  const reviewStatus = reviewStatusFromQuery(searchParams.get("status"))
+  const selectedRowRef = useRef<HTMLButtonElement>(null)
+  const scrolledReportIdRef = useRef<string | null>(null)
+
   const queueQuery = useQuery({
     queryKey: [...reviewQueueKey, reviewStatus],
     queryFn: () => listReviewQueue(reviewStatus),
     refetchInterval: reviewStatus === "pending" ? 5_000 : false,
   })
   const queue = queueQuery.data ?? []
-  const selected = queue.find((item) => item.id === selectedId) ?? queue[0]
+  const activeId = selectedId ?? queue[0]?.id
+
+  useEffect(() => {
+    if (
+      !selectedId ||
+      scrolledReportIdRef.current === selectedId ||
+      !selectedRowRef.current
+    ) {
+      return
+    }
+    selectedRowRef.current.scrollIntoView?.({ block: "center" })
+    scrolledReportIdRef.current = selectedId
+  }, [queueQuery.data, selectedId])
+
   const detailQuery = useQuery({
-    queryKey: ["report", selected?.id],
-    queryFn: () => getReport(selected!.id),
-    enabled: Boolean(selected),
+    queryKey: ["report", activeId],
+    queryFn: () => getReport(activeId!),
+    enabled: Boolean(activeId),
     refetchInterval: (query) =>
       ["queued", "processing"].includes(
         query.state.data?.extraction_status ?? ""
@@ -588,8 +615,8 @@ export function ReviewsPage() {
                 type="button"
                 variant={reviewStatus === value ? "secondary" : "ghost"}
                 onClick={() => {
-                  setReviewStatus(value as keyof typeof REVIEW_LABELS)
-                  setSelectedId(null)
+                  const nextStatus = value as ReviewStatus
+                  setSearchParams({ status: nextStatus }, { replace: true })
                 }}
               >
                 {label}
@@ -632,8 +659,14 @@ export function ReviewsPage() {
               <QueueRow
                 key={report.id}
                 report={report}
-                selected={selected?.id === report.id}
-                onSelect={setSelectedId}
+                rowRef={activeId === report.id ? selectedRowRef : undefined}
+                selected={activeId === report.id}
+                onSelect={(reportId) => {
+                  setSearchParams(
+                    { report: reportId, status: reviewStatus },
+                    { replace: true }
+                  )
+                }}
               />
             ))
           )}
@@ -641,7 +674,7 @@ export function ReviewsPage() {
       </aside>
 
       <main className="flex min-h-0 min-w-0 flex-col">
-        {!selected ? (
+        {!activeId ? (
           <Empty className="border-0">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -683,7 +716,9 @@ export function ReviewsPage() {
           <ReviewWorkbench
             key={`${detailQuery.data.id}-${detailQuery.data.analysis.version}`}
             report={detailQuery.data}
-            onCompleted={() => setSelectedId(null)}
+            onCompleted={() => {
+              setSearchParams({ status: reviewStatus }, { replace: true })
+            }}
           />
         )}
       </main>

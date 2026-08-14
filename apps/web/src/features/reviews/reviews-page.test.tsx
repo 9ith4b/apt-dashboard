@@ -149,4 +149,59 @@ describe("analyst review workbench", () => {
       })
     )
   })
+
+  it("opens the report requested by the intelligence feed deep link", async () => {
+    const linkedReport = {
+      ...report,
+      id: "44444444-4444-4444-8444-444444444444",
+      title: "APT29 targets diplomatic organizations",
+      review_status: "approved",
+    }
+    const linkedAnalysis = {
+      ...analysis,
+      review_status: "approved",
+    }
+    window.history.pushState(
+      {},
+      "",
+      `/reviews?report=${linkedReport.id}&status=approved`
+    )
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url === "/api/v1/reviews?review_status=approved&limit=200") {
+          return Promise.resolve(jsonResponse([report, linkedReport]))
+        }
+        if (url === `/api/v1/reports/${linkedReport.id}`) {
+          return Promise.resolve(
+            jsonResponse({ ...linkedReport, analysis: linkedAnalysis })
+          )
+        }
+        if (url === `/api/v1/reports/${report.id}`) {
+          return Promise.resolve(jsonResponse({ ...report, analysis }))
+        }
+        return Promise.resolve(jsonResponse({ detail: "Not found" }, 404))
+      })
+    )
+
+    render(<App />)
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: linkedReport.title,
+      })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: new RegExp(linkedReport.title) })
+    ).toHaveAttribute("aria-current", "page")
+    expect(
+      vi
+        .mocked(fetch)
+        .mock.calls.some(
+          ([input]) => String(input) === `/api/v1/reports/${linkedReport.id}`
+        )
+    ).toBe(true)
+  })
 })
