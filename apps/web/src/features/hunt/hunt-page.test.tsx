@@ -200,4 +200,14 @@ describe("IOC hunting", () => {
       "overflow-y-auto"
     )
   })
+
+  it("keeps the IOC search controls at one consistent height", async () => {
+    render(<App />)
+
+    await screen.findByTestId("hunt-search-input")
+
+    expect(screen.getByTestId("hunt-search-input")).toHaveClass("h-10")
+    expect(screen.getByTestId("hunt-type-select")).toHaveClass("h-10")
+    expect(screen.getByTestId("hunt-search-submit")).toHaveClass("h-10")
+  })
 })

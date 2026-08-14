@@ -751,6 +751,7 @@ export function HuntPage() {
               <Input
                 aria-label="搜索 Observable 或 Indicator"
                 className="pl-9"
+                data-testid="hunt-search-input"
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="输入 IP、域名、URL、邮箱或文件哈希"
                 value={searchInput}
@@ -758,7 +759,8 @@ export function HuntPage() {
             </div>
             <select
               aria-label="Observable 类型"
-              className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="h-10 shrink-0 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              data-testid="hunt-type-select"
               onChange={(event) => {
                 setType(event.target.value)
                 setSelectedId(null)
@@ -771,7 +773,12 @@ export function HuntPage() {
                 </option>
               ))}
             </select>
-            <Button type="submit">
+            <Button
+              className="shrink-0"
+              data-testid="hunt-search-submit"
+              size="lg"
+              type="submit"
+            >
               <SearchIcon data-icon="inline-start" />
               查询
             </Button>
