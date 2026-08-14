@@ -25,6 +25,24 @@ const observable = {
 
 const evidenceId = "22222222-2222-4222-8222-222222222222"
 
+const indicator = {
+  id: "55555555-5555-4555-8555-555555555555",
+  observable_id: observable.id,
+  observable_type: observable.type,
+  value_normalized: observable.value_normalized,
+  purpose: "Credential phishing infrastructure",
+  pattern: "[domain-name:value = 'interview-example.com']",
+  valid_from: "2026-08-08T00:00:00Z",
+  valid_until: "2026-09-07T23:59:59Z",
+  confidence: 94,
+  severity: "high",
+  revoked: false,
+  reviewed_at: "2026-08-08T08:00:00Z",
+  reviewed_by: "ai-automation",
+  evidence_ids: [evidenceId],
+  version: 1,
+}
+
 function jsonResponse(payload: unknown) {
   return new Response(JSON.stringify(payload), {
     headers: { "Content-Type": "application/json" },
@@ -42,7 +60,7 @@ describe("IOC hunting", () => {
           return Promise.resolve(jsonResponse([observable]))
         }
         if (url === "/api/v1/indicators?limit=200") {
-          return Promise.resolve(jsonResponse([]))
+          return Promise.resolve(jsonResponse([indicator]))
         }
         if (url === `/api/v1/observables/${observable.id}`) {
           return Promise.resolve(
@@ -160,6 +178,26 @@ describe("IOC hunting", () => {
         severity: "high",
         evidence_ids: [evidenceId],
       })
+    )
+  })
+
+  it("keeps Indicator cards at their content height inside the scroll grid", async () => {
+    render(<App />)
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Indicator（1）" })
+    )
+
+    expect(await screen.findByText(indicator.value_normalized)).toBeVisible()
+    expect(screen.getByText(indicator.purpose)).toBeVisible()
+    expect(screen.getByText("置信度 94%")).toBeVisible()
+    expect(screen.getByText("AI自动维护")).toBeVisible()
+    expect(screen.getByRole("button", { name: "撤销 Indicator" })).toBeVisible()
+    expect(screen.getByTestId("indicator-list-scroll")).toHaveClass(
+      "auto-rows-max",
+      "content-start",
+      "items-start",
+      "overflow-y-auto"
     )
   })
 })

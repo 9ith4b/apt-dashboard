@@ -635,9 +635,12 @@ function IndicatorList({ indicators }: { indicators: Indicator[] }) {
   }
 
   return (
-    <div className="grid min-h-0 gap-3 overflow-y-auto overscroll-contain p-4 sm:grid-cols-2 sm:p-6 2xl:grid-cols-3">
+    <div
+      className="grid min-h-0 auto-rows-max content-start items-start gap-3 overflow-y-auto overscroll-contain p-4 sm:grid-cols-2 sm:p-6 2xl:grid-cols-3"
+      data-testid="indicator-list-scroll"
+    >
       {indicators.map((indicator) => (
-        <Card key={indicator.id}>
+        <Card className="h-fit min-w-0" key={indicator.id}>
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Badge variant="outline">
