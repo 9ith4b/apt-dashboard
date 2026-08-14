@@ -3,6 +3,7 @@ import {
   AlertCircleIcon,
   ArrowUpCircleIcon,
   BinocularsIcon,
+  CopyIcon,
   DatabaseZapIcon,
   FileSearchIcon,
   HistoryIcon,
@@ -40,7 +41,24 @@ import {
 } from "@/components/ui/empty"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { formatDateTime } from "@/features/intelligence/intelligence-format"
 import {
@@ -79,6 +97,16 @@ const SEVERITY_LABELS: Record<Indicator["severity"], string> = {
   medium: "中",
   high: "高",
   critical: "严重",
+}
+
+function severityVariant(
+  severity: Indicator["severity"]
+): "destructive" | "relevance" | "candidate" | "secondary" | "outline" {
+  if (severity === "critical") return "destructive"
+  if (severity === "high") return "relevance"
+  if (severity === "medium") return "candidate"
+  if (severity === "low") return "secondary"
+  return "outline"
 }
 
 const AI_DISPOSITION_LABELS: Record<
@@ -602,7 +630,192 @@ function ObservableDetailPanel({
   )
 }
 
-function IndicatorList({ indicators }: { indicators: Indicator[] }) {
+function IndicatorDetailSheet({
+  indicator,
+  open,
+  onOpenChange,
+  onToggleRevoked,
+  updating,
+}: {
+  indicator: Indicator | undefined
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onToggleRevoked: (indicator: Indicator) => void
+  updating: boolean
+}) {
+  const copyText = async (value: string, label: string) => {
+    try {
+      if (window.isSecureContext && navigator.clipboard) {
+        await navigator.clipboard.writeText(value)
+      } else {
+        const textarea = document.createElement("textarea")
+        textarea.value = value
+        textarea.style.position = "fixed"
+        textarea.style.opacity = "0"
+        document.body.appendChild(textarea)
+        textarea.focus()
+        textarea.select()
+        const copied = document.execCommand("copy")
+        textarea.remove()
+        if (!copied) throw new Error("Clipboard command failed")
+      }
+      toast.success(`${label}已复制`)
+    } catch {
+      toast.error("复制失败，请手动复制")
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        aria-describedby="indicator-detail-description"
+        className="w-full gap-0 overflow-hidden sm:w-[38rem] sm:max-w-[calc(100vw-2rem)]"
+        side="right"
+      >
+        <SheetHeader className="shrink-0 px-4 py-4 pr-12 sm:px-6">
+          <p className="workspace-kicker">Indicator</p>
+          <SheetTitle>Indicator 详情</SheetTitle>
+          <SheetDescription id="indicator-detail-description">
+            查看 AI 判定、检测模式与生命周期；仅在发现误判时人工纠正
+          </SheetDescription>
+        </SheetHeader>
+        <Separator />
+        {indicator ? (
+          <div
+            aria-label="Indicator 详情内容"
+            className="flex min-h-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto overscroll-contain p-5 break-words sm:p-6"
+            data-testid="indicator-detail-scroll"
+            role="region"
+          >
+            <section className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline">
+                  {indicator.observable_type.toUpperCase()}
+                </Badge>
+                <Badge variant={indicator.revoked ? "secondary" : "confirmed"}>
+                  {indicator.revoked ? "已撤销" : "有效"}
+                </Badge>
+                <Badge variant={severityVariant(indicator.severity)}>
+                  {SEVERITY_LABELS[indicator.severity]}
+                </Badge>
+              </div>
+              <div className="flex min-w-0 items-start gap-2">
+                <p className="min-w-0 flex-1 font-mono text-sm leading-6 break-all">
+                  {indicator.value_normalized}
+                </p>
+                <Button
+                  aria-label="复制 Indicator"
+                  onClick={() =>
+                    void copyText(indicator.value_normalized, "Indicator")
+                  }
+                  size="icon-sm"
+                  variant="outline"
+                >
+                  <CopyIcon />
+                </Button>
+              </div>
+            </section>
+
+            <Separator />
+
+            <section className="flex flex-col gap-3">
+              <div>
+                <h3 className="text-sm font-medium">AI 判断与用途</h3>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  {indicator.purpose || "未提供恶意用途说明"}
+                </p>
+              </div>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg bg-muted/50 p-4 text-sm">
+                <div>
+                  <dt className="text-xs text-muted-foreground">置信度</dt>
+                  <dd className="mt-1 font-medium">{indicator.confidence}%</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">证据数量</dt>
+                  <dd className="mt-1 font-medium">
+                    {indicator.evidence_ids.length} 条
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">维护方式</dt>
+                  <dd className="mt-1 font-medium">
+                    {indicator.reviewed_by === "ai-automation"
+                      ? "AI 自动维护"
+                      : "人工覆盖"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">最后复核</dt>
+                  <dd className="mt-1 font-medium">
+                    {formatDateTime(indicator.reviewed_at)}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className="flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-medium">STIX 检测模式</h3>
+                <Button
+                  aria-label="复制 STIX 检测模式"
+                  onClick={() => void copyText(indicator.pattern, "检测模式")}
+                  size="icon-sm"
+                  variant="ghost"
+                >
+                  <CopyIcon />
+                </Button>
+              </div>
+              <code className="rounded-lg bg-muted p-3 text-xs leading-5 break-all">
+                {indicator.pattern}
+              </code>
+            </section>
+
+            <section className="flex flex-col gap-3">
+              <h3 className="text-sm font-medium">生命周期</h3>
+              <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs text-muted-foreground">生效时间</dt>
+                  <dd className="mt-1 font-medium">
+                    {formatDateTime(indicator.valid_from)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">有效期至</dt>
+                  <dd className="mt-1 font-medium">
+                    {formatDateTime(indicator.valid_until)}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+        ) : null}
+        {indicator ? (
+          <>
+            <Separator />
+            <SheetFooter className="shrink-0 p-4 sm:px-6">
+              <Button
+                disabled={updating}
+                onClick={() => onToggleRevoked(indicator)}
+                variant={indicator.revoked ? "outline" : "destructive"}
+              >
+                {indicator.revoked ? (
+                  <RotateCcwIcon data-icon="inline-start" />
+                ) : (
+                  <HistoryIcon data-icon="inline-start" />
+                )}
+                {indicator.revoked ? "恢复 Indicator" : "撤销 Indicator"}
+              </Button>
+            </SheetFooter>
+          </>
+        ) : null}
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+function IndicatorTable({ indicators }: { indicators: Indicator[] }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = indicators.find((indicator) => indicator.id === selectedId)
   const queryClient = useQueryClient()
   const mutation = useMutation({
     mutationFn: (indicator: Indicator) =>
@@ -635,63 +848,164 @@ function IndicatorList({ indicators }: { indicators: Indicator[] }) {
   }
 
   return (
-    <div
-      className="grid min-h-0 auto-rows-max content-start items-start gap-3 overflow-y-auto overscroll-contain p-4 sm:grid-cols-2 sm:p-6 2xl:grid-cols-3"
-      data-testid="indicator-list-scroll"
-    >
-      {indicators.map((indicator) => (
-        <Card className="h-fit min-w-0" key={indicator.id}>
-          <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <Badge variant="outline">
-                {indicator.observable_type.toUpperCase()}
-              </Badge>
-              <Badge variant={indicator.revoked ? "secondary" : "confirmed"}>
-                {indicator.revoked ? "已撤销" : "有效"}
-              </Badge>
-            </div>
-            <CardTitle className="font-mono text-sm break-all">
-              {indicator.value_normalized}
-            </CardTitle>
-            <CardDescription>{indicator.purpose}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">
-                {SEVERITY_LABELS[indicator.severity]}
-              </Badge>
-              <Badge variant="outline">置信度 {indicator.confidence}%</Badge>
-              <Badge variant="outline">
-                {indicator.evidence_ids.length} 条证据
-              </Badge>
-              <Badge variant="outline">
-                {indicator.reviewed_by === "ai-automation"
-                  ? "AI自动维护"
-                  : "人工覆盖"}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              有效至 {formatDateTime(indicator.valid_until)}
-            </p>
-            <code className="rounded-md bg-muted p-2 text-xs break-all">
-              {indicator.pattern}
-            </code>
-            <Button
-              disabled={mutation.isPending}
-              onClick={() => mutation.mutate(indicator)}
-              size="sm"
-              variant={indicator.revoked ? "outline" : "destructive"}
-            >
-              {indicator.revoked ? (
-                <RotateCcwIcon data-icon="inline-start" />
-              ) : (
-                <HistoryIcon data-icon="inline-start" />
-              )}
-              {indicator.revoked ? "恢复 Indicator" : "撤销 Indicator"}
-            </Button>
-          </CardContent>
-        </Card>
-      ))}
+    <>
+      <div
+        className="min-h-0 overflow-hidden bg-background [&_[data-slot=table-container]]:h-full [&_[data-slot=table-container]]:overflow-auto [&_[data-slot=table-container]]:overscroll-contain"
+        data-testid="indicator-table-scroll"
+      >
+        <Table className="min-w-[50rem]">
+          <TableHeader className="sticky top-0 bg-background shadow-xs">
+            <TableRow>
+              <TableHead className="w-24">类型</TableHead>
+              <TableHead>Indicator</TableHead>
+              <TableHead className="hidden min-w-48 lg:table-cell">
+                恶意用途
+              </TableHead>
+              <TableHead className="w-24">严重度</TableHead>
+              <TableHead className="w-28">AI 置信度</TableHead>
+              <TableHead className="hidden w-24 2xl:table-cell">证据</TableHead>
+              <TableHead className="hidden w-44 2xl:table-cell">
+                有效期至
+              </TableHead>
+              <TableHead className="w-24">状态</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {indicators.map((indicator) => (
+              <TableRow
+                aria-label={`查看 Indicator ${indicator.value_normalized}`}
+                className="cursor-pointer focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                data-state={
+                  selected?.id === indicator.id ? "selected" : undefined
+                }
+                key={indicator.id}
+                onClick={() => setSelectedId(indicator.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    setSelectedId(indicator.id)
+                  }
+                }}
+                tabIndex={0}
+              >
+                <TableCell>
+                  <Badge variant="outline">
+                    {indicator.observable_type.toUpperCase()}
+                  </Badge>
+                </TableCell>
+                <TableCell className="max-w-80">
+                  <p
+                    className="truncate font-mono text-xs font-medium"
+                    title={indicator.value_normalized}
+                  >
+                    {indicator.value_normalized}
+                  </p>
+                </TableCell>
+                <TableCell className="hidden max-w-72 lg:table-cell">
+                  <p className="truncate text-muted-foreground">
+                    {indicator.purpose || "未提供"}
+                  </p>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={severityVariant(indicator.severity)}>
+                    {SEVERITY_LABELS[indicator.severity]}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-medium">
+                  {indicator.confidence}%
+                </TableCell>
+                <TableCell className="hidden text-muted-foreground 2xl:table-cell">
+                  {indicator.evidence_ids.length} 条
+                </TableCell>
+                <TableCell className="hidden text-muted-foreground 2xl:table-cell">
+                  {formatDateTime(indicator.valid_until)}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={indicator.revoked ? "secondary" : "confirmed"}
+                  >
+                    {indicator.revoked ? "已撤销" : "有效"}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <IndicatorDetailSheet
+        indicator={selected}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null)
+        }}
+        onToggleRevoked={(indicator) => mutation.mutate(indicator)}
+        open={Boolean(selected)}
+        updating={mutation.isPending}
+      />
+    </>
+  )
+}
+
+function IndicatorTableSkeleton() {
+  return (
+    <div className="min-h-0 overflow-hidden bg-background [&_[data-slot=table-container]]:h-full [&_[data-slot=table-container]]:overflow-hidden">
+      <Table className="min-w-[50rem]">
+        <TableHeader>
+          <TableRow>
+            {[
+              "类型",
+              "Indicator",
+              "恶意用途",
+              "严重度",
+              "AI 置信度",
+              "证据",
+              "有效期至",
+              "状态",
+            ].map((label, index) => (
+              <TableHead
+                className={cn(
+                  index === 5 || index === 6
+                    ? "hidden 2xl:table-cell"
+                    : undefined
+                )}
+                key={label}
+              >
+                {label}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {[0, 1, 2, 3, 4, 5].map((item) => (
+            <TableRow key={item}>
+              <TableCell>
+                <Skeleton className="h-5 w-12" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-48" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-40" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-10" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-12" />
+              </TableCell>
+              <TableCell className="hidden 2xl:table-cell">
+                <Skeleton className="h-4 w-10" />
+              </TableCell>
+              <TableCell className="hidden 2xl:table-cell">
+                <Skeleton className="h-4 w-28" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-10" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -812,11 +1126,7 @@ export function HuntPage() {
 
       {mode === "indicators" ? (
         indicatorsQuery.isPending ? (
-          <div className="grid gap-3 p-6 sm:grid-cols-2 xl:grid-cols-3">
-            {[0, 1, 2].map((item) => (
-              <Skeleton className="h-72" key={item} />
-            ))}
-          </div>
+          <IndicatorTableSkeleton />
         ) : indicatorsQuery.isError ? (
           <Empty className="border-0">
             <EmptyHeader>
@@ -830,7 +1140,7 @@ export function HuntPage() {
             </EmptyHeader>
           </Empty>
         ) : (
-          <IndicatorList indicators={indicators} />
+          <IndicatorTable indicators={indicators} />
         )
       ) : observablesQuery.isPending ? (
         <div className="grid min-h-0 gap-4 p-6 lg:grid-cols-[22rem_minmax(0,1fr)]">

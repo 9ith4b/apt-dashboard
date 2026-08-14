@@ -75,3 +75,58 @@
 - Revisit the glow only if user testing shows the moving ring draws too much attention during credential entry.
 
 final result: passed
+
+---
+
+# IOC Indicator table and detail drawer design QA
+
+## Comparison target
+
+- Source visual truth: `C:\Users\example\.codex\visualizations\2026\08\07\019fdcbd-12f7-7462-9a92-c6eb99d4362f\indicator-before.png` (existing IOC screen and product visual system)
+- Interaction reference: production intelligence-feed `材料速览` Sheet pattern at `http://server.example.com:8180/feed`
+- Implementation: `http://server.example.com:8180/hunt`, Indicator mode
+- Table screenshot: `C:\Users\example\.codex\visualizations\2026\08\07\019fdcbd-12f7-7462-9a92-c6eb99d4362f\indicator-table-final-light.png`
+- Drawer screenshot: `C:\Users\example\.codex\visualizations\2026\08\07\019fdcbd-12f7-7462-9a92-c6eb99d4362f\indicator-table-drawer-final-light.png`
+- Dark-theme drawer screenshot: `C:\Users\example\.codex\visualizations\2026\08\07\019fdcbd-12f7-7462-9a92-c6eb99d4362f\indicator-table-drawer-dark.png`
+- Viewport: 1280 x 720 CSS px, device scale factor 1
+- Pixel normalization: source and implementation captures are 1280 x 720 px at 1x density; no resampling required
+- State: authenticated Admin, IOC 狩猎 / Indicator, 200 rows loaded, first row selected for drawer checks
+
+## Full-view comparison evidence
+
+- Fonts and typography: the existing Inter/Noto Sans SC hierarchy is retained. Hashes use the established monospace treatment, long values truncate in the table and remain fully readable in the drawer.
+- Spacing and layout rhythm: the former two-column Card grid is replaced by compact 54 px table rows. Header, search controls, object switch, sidebar and top navigation keep their original alignment.
+- Colors and visual tokens: all states use existing semantic Badge variants. Light and dark modes inherit the configured theme without raw color overrides.
+- Image quality and asset fidelity: this data-management screen contains no imagery; all icons use the configured Lucide library and no placeholder or hand-drawn assets were introduced.
+- Copy and content: the table exposes type, Indicator, malicious purpose, severity, AI confidence and status. Evidence, validity, maintenance, STIX pattern and corrective actions are preserved in the drawer rather than removed.
+- Interaction and accessibility: each row is keyboard focusable and responds to Enter/Space; the Sheet has an accessible title/description, independent vertical scrolling and a persistent corrective-action footer.
+- Focused-region comparison: the table and drawer were inspected as separate focused captures because the overlay intentionally blurs the underlying list. Full values, labels, copy buttons, badges, STIX pattern and footer action remained readable.
+
+## Comparison history
+
+### Iteration 1
+
+- Finding: P2 — showing all eight columns at the 1280 px viewport created horizontal overflow and clipped the status column.
+- Fix: reduced the table minimum width and deferred evidence and expiry columns to the 2xl breakpoint; those fields remain available in the drawer at every width.
+- Post-fix evidence: the final table container measures 1041 px client width and 1041 px scroll width, with visible headers `类型 / Indicator / 恶意用途 / 严重度 / AI 置信度 / 状态` and no horizontal overflow.
+
+### Final pass
+
+- No actionable P0, P1 or P2 mismatch remains.
+- The body height is fixed to the application workspace: document scroll height is 720 px, workspace client/scroll height is 656/656 px, while the table independently scrolls 10,844 px of content inside a 497 px viewport.
+- The drawer independently scrolls its content and keeps the revoke/restore action visible in the footer.
+
+## Browser and interaction checks
+
+- Page identity: `APT Hunter` at `/hunt`.
+- Primary interactions: Indicator tab, row selection, drawer open/close, copy controls present, light/dark theme rendering.
+- Framework overlay: none.
+- Console health: no warnings or errors after table rendering, drawer interaction and theme switching.
+- Automated checks: targeted Vitest suite 3/3 passed, TypeScript passed and ESLint passed.
+- Responsive note: the in-app browser viewport was fixed at 1280 x 720 for this pass. The implementation uses breakpoint-driven column reduction and a full-width Sheet on small screens; a native 390 px browser capture was not available in this session.
+
+## Follow-up polish
+
+- P3: if future testing shows analysts need evidence count visible at 1280 px, a column-visibility menu can be added without returning to the Card layout.
+
+final result: passed

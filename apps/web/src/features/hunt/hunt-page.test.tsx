@@ -181,24 +181,39 @@ describe("IOC hunting", () => {
     )
   })
 
-  it("keeps Indicator cards at their content height inside the scroll grid", async () => {
+  it("shows Indicators in a scrollable table and opens a detail drawer", async () => {
     render(<App />)
 
     fireEvent.click(
       await screen.findByRole("button", { name: "Indicator（1）" })
     )
 
-    expect(await screen.findByText(indicator.value_normalized)).toBeVisible()
+    expect(await screen.findByRole("table")).toBeVisible()
+    expect(screen.getByText(indicator.value_normalized)).toBeVisible()
     expect(screen.getByText(indicator.purpose)).toBeVisible()
-    expect(screen.getByText("置信度 94%")).toBeVisible()
-    expect(screen.getByText("AI自动维护")).toBeVisible()
-    expect(screen.getByRole("button", { name: "撤销 Indicator" })).toBeVisible()
-    expect(screen.getByTestId("indicator-list-scroll")).toHaveClass(
-      "auto-rows-max",
-      "content-start",
-      "items-start",
-      "overflow-y-auto"
+    expect(screen.getByText("94%")).toBeVisible()
+    expect(
+      screen.queryByTestId("indicator-list-scroll")
+    ).not.toBeInTheDocument()
+    expect(screen.getByTestId("indicator-table-scroll")).toHaveClass(
+      "overflow-hidden"
     )
+
+    fireEvent.click(
+      screen.getByRole("row", {
+        name: `查看 Indicator ${indicator.value_normalized}`,
+      })
+    )
+
+    expect(
+      await screen.findByRole("dialog", { name: "Indicator 详情" })
+    ).toBeVisible()
+    expect(
+      screen.getByRole("region", { name: "Indicator 详情内容" })
+    ).toHaveClass("overflow-y-auto", "overflow-x-hidden")
+    expect(screen.getByText("AI 自动维护")).toBeVisible()
+    expect(screen.getByText(indicator.pattern)).toBeVisible()
+    expect(screen.getByRole("button", { name: "撤销 Indicator" })).toBeVisible()
   })
 
   it("keeps the IOC search controls at one consistent height", async () => {
