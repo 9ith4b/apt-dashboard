@@ -164,6 +164,14 @@ describe("threat actor tracking", () => {
     )
     expect(await screen.findByText("等长周期对比")).toBeInTheDocument()
     expect(screen.getByText("新增 · Cloud Credential Tool")).toBeInTheDocument()
+    expect(screen.getByTestId("actor-page-header")).toHaveClass("py-3")
+    expect(screen.getByTestId("actor-date-filter")).toHaveClass(
+      "lg:w-[23.25rem]"
+    )
+    expect(
+      screen.getByRole("complementary", { name: "攻击组织列表" })
+    ).toHaveAttribute("data-testid", "actor-list-scroll")
+    expect(screen.queryByText("规范化组织")).not.toBeInTheDocument()
     expect(screen.getByRole("link", { name: "JSON" })).toHaveAttribute(
       "href",
       expect.stringContaining("/tracking/export")

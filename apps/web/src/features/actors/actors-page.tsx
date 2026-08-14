@@ -7,7 +7,6 @@ import {
   FileCheck2Icon,
   FlagIcon,
   ShieldUserIcon,
-  TagsIcon,
   TargetIcon,
 } from "lucide-react"
 import { useState } from "react"
@@ -394,9 +393,19 @@ export function ActorsPage() {
 
   return (
     <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]">
-      <header className="border-b border-border bg-surface px-4 py-4 sm:px-6">
-        <div className="flex flex-col justify-between gap-4 2xl:flex-row 2xl:items-end">
-          <div>
+      <header
+        className="border-b border-border bg-surface px-4 py-3 sm:px-6"
+        data-testid="actor-page-header"
+      >
+        <div
+          className={cn(
+            "grid gap-3",
+            preset === "custom"
+              ? "2xl:grid-cols-[minmax(18rem,1fr)_auto] 2xl:items-center"
+              : "lg:grid-cols-[minmax(18rem,1fr)_auto] lg:items-center"
+          )}
+        >
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
               <ShieldUserIcon className="size-5 text-primary" />
               <h1 className="text-xl font-semibold">攻击组织持续跟踪</h1>
@@ -404,12 +413,28 @@ export function ActorsPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               合并组织别名，按自定义日期和常用时间范围查看已确认攻击事件
             </p>
+            {actors.length ? (
+              <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <Badge variant="secondary">{actors.length} 个攻击组织</Badge>
+                <Badge variant="secondary">{totalEvents} 条组织—事件关联</Badge>
+              </div>
+            ) : null}
           </div>
           <FieldGroup
-            className="w-full gap-3 2xl:max-w-[58rem]"
+            className={cn(
+              "w-full gap-2",
+              preset === "custom" ? "2xl:w-[47.75rem]" : "lg:w-[23.25rem]"
+            )}
             data-testid="actor-date-filter"
           >
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-end">
+            <div
+              className={cn(
+                "flex flex-col gap-2",
+                preset === "custom"
+                  ? "xl:flex-row xl:items-end xl:justify-end"
+                  : "sm:flex-row sm:items-end lg:justify-end"
+              )}
+            >
               {preset === "custom" ? (
                 <FieldGroup className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:w-96 xl:shrink-0">
                   <Field data-invalid={!rangeIsValid || undefined}>
@@ -452,7 +477,7 @@ export function ActorsPage() {
                   </Field>
                 </FieldGroup>
               ) : null}
-              <Field className="xl:w-auto xl:shrink-0">
+              <Field className="w-fit shrink-0">
                 <FieldLabel className="h-5 items-center">日期范围</FieldLabel>
                 <ToggleGroup
                   aria-label="日期范围"
@@ -496,12 +521,6 @@ export function ActorsPage() {
             ) : null}
           </FieldGroup>
         </div>
-        {actors.length ? (
-          <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <Badge variant="secondary">{actors.length} 个攻击组织</Badge>
-            <Badge variant="secondary">{totalEvents} 条组织—事件关联</Badge>
-          </div>
-        ) : null}
       </header>
 
       {!rangeIsValid ? (
@@ -551,16 +570,11 @@ export function ActorsPage() {
         </Empty>
       ) : (
         <div className="grid min-h-0 lg:grid-cols-[22rem_minmax(0,1fr)]">
-          <aside className="max-h-80 overflow-y-auto border-b border-border bg-card lg:max-h-none lg:border-r lg:border-b-0">
-            <div className="border-b border-border p-4">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <TagsIcon className="size-4 text-primary" />
-                规范化组织
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                同一组织的常见厂商命名已合并
-              </p>
-            </div>
+          <aside
+            aria-label="攻击组织列表"
+            className="max-h-80 overflow-y-auto border-b border-border bg-card lg:max-h-none lg:border-r lg:border-b-0"
+            data-testid="actor-list-scroll"
+          >
             {actors.map((actor) => (
               <ActorRow
                 actor={actor}
