@@ -59,6 +59,32 @@ describe("Campaign timeline", () => {
         if (url === "/api/v1/campaigns?limit=200") {
           return Promise.resolve(jsonResponse([campaign]))
         }
+        if (url === "/api/v1/campaigns/automation/status") {
+          return Promise.resolve(
+            jsonResponse({
+              automation_enabled: true,
+              unattended_mode: true,
+              model_configured: true,
+              ready: true,
+              confirmed_event_count: 12,
+              eligible_event_count: 10,
+              assigned_event_count: 8,
+              unassigned_event_count: 2,
+              campaign_count: 2,
+              pending_job_count: 1,
+              last_job_status: "succeeded",
+              last_job_at: "2026-08-08T08:00:00Z",
+              last_job_result: {},
+              last_job_error: null,
+            })
+          )
+        }
+        if (
+          url === "/api/v1/campaigns/automation/backfill" &&
+          init?.method === "POST"
+        ) {
+          return Promise.resolve(jsonResponse({ queued: 4, job_ids: [] }))
+        }
         if (url === "/api/v1/watch-rules" && init?.method === "POST") {
           return Promise.resolve(
             jsonResponse({
@@ -171,6 +197,26 @@ describe("Campaign timeline", () => {
               "Shared infrastructure and explicit operation naming.",
             expected_version: campaign.version,
           }),
+        })
+      )
+    )
+  })
+
+  it("shows autonomous clustering status and supports a recovery scan", async () => {
+    render(<App />)
+
+    expect(await screen.findByText("AI聚类运行中")).toBeInTheDocument()
+    expect(
+      screen.getByText(/12 个已确认事件.*10 个具备聚类证据/)
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "重新扫描" }))
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/v1/campaigns/automation/backfill",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ limit: 200, force: true }),
         })
       )
     )

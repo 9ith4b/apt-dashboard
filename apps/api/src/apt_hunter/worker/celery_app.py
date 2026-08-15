@@ -27,6 +27,10 @@ celery_app.conf.beat_schedule = {
         "task": "apt_hunter.reports.queue_pending",
         "schedule": 60.0,
     },
+    "queue-pending-campaign-clustering": {
+        "task": "apt_hunter.campaigns.queue_pending",
+        "schedule": 60.0,
+    },
 }
 
 

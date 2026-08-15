@@ -57,6 +57,7 @@ const statusLabels = {
 const jobLabels = {
   source_poll: "采集数据源",
   report_enrichment: "富化报告",
+  campaign_clustering: "AI归纳攻击活动",
 } as const
 
 function statusVariant(status: OperationJob["status"]) {

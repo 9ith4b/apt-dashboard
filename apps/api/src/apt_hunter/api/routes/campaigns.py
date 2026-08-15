@@ -3,19 +3,27 @@ from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
 from apt_hunter.db.session import get_db
 from apt_hunter.models import (
+    AIModelConfig,
+    AIProcessingPolicy,
     Campaign,
     CampaignEvent,
     EventActor,
+    EventObservable,
+    EventTechnique,
+    OperationJob,
     ThreatActor,
     ThreatEvent,
 )
 from apt_hunter.schemas.campaign import (
+    CampaignAutomationStatus,
+    CampaignBackfillRead,
+    CampaignBackfillRequest,
     CampaignCreate,
     CampaignDetail,
     CampaignEventRead,
@@ -23,9 +31,20 @@ from apt_hunter.schemas.campaign import (
     CampaignSummary,
     CampaignUpdate,
 )
+from apt_hunter.services.auth import AuthPrincipal
+from apt_hunter.services.campaign_clustering import (
+    campaign_automation_ready,
+    pending_campaign_event_ids,
+)
+from apt_hunter.services.jobs import queue_job
 
 router = APIRouter()
 DbSession = Annotated[Session, Depends(get_db)]
+
+
+def _actor(request: Request) -> str:
+    principal = getattr(request.state, "principal", None)
+    return principal.username if isinstance(principal, AuthPrincipal) else "local-admin"
 
 
 def _campaign_metadata(
@@ -163,6 +182,136 @@ def list_campaigns(
         )
     )
     return _campaign_summaries(session, campaigns)
+
+
+@router.get("/automation/status", response_model=CampaignAutomationStatus)
+def get_campaign_automation_status(session: DbSession) -> CampaignAutomationStatus:
+    policy = session.get(AIProcessingPolicy, "default")
+    confirmed_event_count = int(
+        session.scalar(
+            select(func.count())
+            .select_from(ThreatEvent)
+            .where(
+                ThreatEvent.status == "confirmed",
+                ThreatEvent.superseded_by_id.is_(None),
+            )
+        )
+        or 0
+    )
+    assigned_event_count = int(
+        session.scalar(
+            select(func.count(func.distinct(CampaignEvent.event_id)))
+            .select_from(CampaignEvent)
+            .join(ThreatEvent, ThreatEvent.id == CampaignEvent.event_id)
+            .where(
+                ThreatEvent.status == "confirmed",
+                ThreatEvent.superseded_by_id.is_(None),
+            )
+        )
+        or 0
+    )
+    eligibility = (
+        func.coalesce(ThreatEvent.confidence_analyst, ThreatEvent.confidence_auto, 0) >= 70,
+        exists().where(EventActor.event_id == ThreatEvent.id),
+        (
+            exists().where(EventObservable.event_id == ThreatEvent.id)
+            | exists().where(EventTechnique.event_id == ThreatEvent.id)
+        ),
+    )
+    eligible_event_count = int(
+        session.scalar(
+            select(func.count())
+            .select_from(ThreatEvent)
+            .where(
+                ThreatEvent.status == "confirmed",
+                ThreatEvent.superseded_by_id.is_(None),
+                *eligibility,
+            )
+        )
+        or 0
+    )
+    eligible_unassigned_count = int(
+        session.scalar(
+            select(func.count())
+            .select_from(ThreatEvent)
+            .where(
+                ThreatEvent.status == "confirmed",
+                ThreatEvent.superseded_by_id.is_(None),
+                *eligibility,
+                ~exists().where(CampaignEvent.event_id == ThreatEvent.id),
+            )
+        )
+        or 0
+    )
+    campaign_count = int(session.scalar(select(func.count()).select_from(Campaign)) or 0)
+    pending_job_count = int(
+        session.scalar(
+            select(func.count())
+            .select_from(OperationJob)
+            .where(
+                OperationJob.job_type == "campaign_clustering",
+                OperationJob.status.in_(["queued", "running"]),
+            )
+        )
+        or 0
+    )
+    model_configured = bool(
+        session.scalar(
+            select(AIModelConfig.id).where(
+                AIModelConfig.enabled.is_(True), AIModelConfig.is_default.is_(True)
+            )
+        )
+    )
+    last_job = session.scalar(
+        select(OperationJob)
+        .where(OperationJob.job_type == "campaign_clustering")
+        .order_by(OperationJob.created_at.desc())
+        .limit(1)
+    )
+    return CampaignAutomationStatus(
+        automation_enabled=bool(policy and policy.automation_enabled),
+        unattended_mode=bool(policy and policy.unattended_mode),
+        model_configured=model_configured,
+        ready=campaign_automation_ready(session),
+        confirmed_event_count=confirmed_event_count,
+        eligible_event_count=eligible_event_count,
+        assigned_event_count=assigned_event_count,
+        unassigned_event_count=eligible_unassigned_count,
+        campaign_count=campaign_count,
+        pending_job_count=pending_job_count,
+        last_job_status=last_job.status if last_job else None,
+        last_job_at=last_job.created_at if last_job else None,
+        last_job_result=last_job.result if last_job else {},
+        last_job_error=last_job.error if last_job else None,
+    )
+
+
+@router.post("/automation/backfill", response_model=CampaignBackfillRead)
+def backfill_campaigns(
+    payload: CampaignBackfillRequest,
+    request: Request,
+    session: DbSession,
+) -> CampaignBackfillRead:
+    if not campaign_automation_ready(session):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="请先启用无人值守AI自动化并配置可用的默认模型",
+        )
+    event_ids = pending_campaign_event_ids(
+        session,
+        limit=payload.limit,
+        force=payload.force,
+    )
+    job_ids = [
+        queue_job(
+            job_type="campaign_clustering",
+            subject_type="event",
+            subject_id=event_id,
+            requested_by=_actor(request),
+        )
+        for event_id in event_ids
+    ]
+    return CampaignBackfillRead(queued=len(job_ids), job_ids=job_ids)
 
 
 @router.post("", response_model=CampaignDetail, status_code=status.HTTP_201_CREATED)

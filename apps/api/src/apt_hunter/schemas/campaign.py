@@ -79,3 +79,30 @@ class CampaignEventUpsert(BaseModel):
     evidence_note: str = Field(min_length=3, max_length=5000)
     expected_version: int = Field(ge=1)
     reviewed_by: str = Field(default="local-analyst", min_length=1, max_length=100)
+
+
+class CampaignAutomationStatus(BaseModel):
+    automation_enabled: bool
+    unattended_mode: bool
+    model_configured: bool
+    ready: bool
+    confirmed_event_count: int
+    eligible_event_count: int
+    assigned_event_count: int
+    unassigned_event_count: int
+    campaign_count: int
+    pending_job_count: int
+    last_job_status: str | None = None
+    last_job_at: datetime | None = None
+    last_job_result: dict[str, object] = Field(default_factory=dict)
+    last_job_error: str | None = None
+
+
+class CampaignBackfillRequest(BaseModel):
+    limit: int = Field(default=200, ge=1, le=500)
+    force: bool = False
+
+
+class CampaignBackfillRead(BaseModel):
+    queued: int
+    job_ids: list[UUID]

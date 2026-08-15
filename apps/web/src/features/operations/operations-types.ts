@@ -1,7 +1,7 @@
 export type OperationJob = {
   id: string
   task_id: string
-  job_type: "source_poll" | "report_enrichment"
+  job_type: "source_poll" | "report_enrichment" | "campaign_clustering"
   subject_type: string
   subject_id: string
   status: "queued" | "running" | "succeeded" | "failed" | "canceled"

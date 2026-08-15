@@ -47,3 +47,25 @@ export type CampaignDetail = CampaignSummary & {
     actor_names: string[]
   }>
 }
+
+export type CampaignAutomationStatus = {
+  automation_enabled: boolean
+  unattended_mode: boolean
+  model_configured: boolean
+  ready: boolean
+  confirmed_event_count: number
+  eligible_event_count: number
+  assigned_event_count: number
+  unassigned_event_count: number
+  campaign_count: number
+  pending_job_count: number
+  last_job_status: string | null
+  last_job_at: string | null
+  last_job_result: Record<string, unknown>
+  last_job_error: string | null
+}
+
+export type CampaignBackfillRead = {
+  queued: number
+  job_ids: string[]
+}

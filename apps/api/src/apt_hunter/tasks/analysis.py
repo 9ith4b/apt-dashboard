@@ -7,6 +7,11 @@ from apt_hunter.config import get_settings
 from apt_hunter.db.session import SessionLocal
 from apt_hunter.models import Report, ReportAnalysis
 from apt_hunter.services.analysis import analyze_report
+from apt_hunter.services.campaign_clustering import (
+    campaign_automation_ready,
+    cluster_event,
+    pending_campaign_event_ids,
+)
 from apt_hunter.services.jobs import (
     mark_job_failed,
     mark_job_retrying,
@@ -71,3 +76,52 @@ def queue_pending_reports() -> dict[str, int]:
             subject_id=report_id,
         )
     return {"queued": len(report_ids)}
+
+
+@celery_app.task(  # type: ignore[untyped-decorator]
+    bind=True,
+    name="apt_hunter.campaigns.cluster_event",
+    max_retries=2,
+)
+def cluster_campaign_event(
+    self: Any,
+    event_id: str,
+    job_id: str | None = None,
+) -> dict[str, object]:
+    resolved_job_id = UUID(job_id) if job_id else None
+    if resolved_job_id:
+        mark_job_running(resolved_job_id)
+    try:
+        with SessionLocal.begin() as session:
+            result = cluster_event(session, UUID(event_id))
+    except Exception as error:
+        if self.request.retries < self.max_retries:
+            if resolved_job_id:
+                mark_job_retrying(resolved_job_id, error)
+            countdown = min(300, 30 * (2**self.request.retries))
+            raise self.retry(exc=error, countdown=countdown) from error
+        if resolved_job_id:
+            mark_job_failed(resolved_job_id, error)
+        raise
+    if resolved_job_id:
+        mark_job_succeeded(resolved_job_id, result)
+    return result
+
+
+@celery_app.task(name="apt_hunter.campaigns.queue_pending")  # type: ignore[untyped-decorator]
+def queue_pending_campaign_events() -> dict[str, int | str]:
+    settings = get_settings()
+    with SessionLocal() as session:
+        if not campaign_automation_ready(session):
+            return {"queued": 0, "status": "not_ready"}
+        event_ids = pending_campaign_event_ids(
+            session,
+            limit=settings.campaign_scheduler_batch_size,
+        )
+    for event_id in event_ids:
+        queue_job(
+            job_type="campaign_clustering",
+            subject_type="event",
+            subject_id=event_id,
+        )
+    return {"queued": len(event_ids), "status": "ready"}

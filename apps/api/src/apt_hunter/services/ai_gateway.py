@@ -12,6 +12,25 @@ from apt_hunter.services.secrets import decrypt_secret
 
 PROMPT_VERSION = "apt-analysis-v3"
 VERIFY_PROMPT_VERSION = "apt-verifier-v3"
+CAMPAIGN_PROMPT_VERSION = "campaign-clustering-v1"
+
+CAMPAIGN_STAGES = {
+    "unknown",
+    "reconnaissance",
+    "resource-development",
+    "initial-access",
+    "execution",
+    "persistence",
+    "privilege-escalation",
+    "defense-evasion",
+    "credential-access",
+    "discovery",
+    "lateral-movement",
+    "collection",
+    "command-and-control",
+    "exfiltration",
+    "impact",
+}
 
 
 class AIEntity(BaseModel):
@@ -85,6 +104,18 @@ class AIVerificationPayload(BaseModel):
     decision_reason: str = Field(max_length=3000)
 
 
+class AICampaignDecision(BaseModel):
+    action: Literal["join_existing", "create_new", "independent"]
+    campaign_id: str | None = Field(default=None, max_length=100)
+    campaign_name: str = Field(default="", max_length=300)
+    description: str = Field(default="", max_length=3000)
+    stage: str = Field(default="unknown", max_length=50)
+    confidence: int = Field(ge=0, le=100)
+    evidence_note: str = Field(default="", max_length=3000)
+    related_event_ids: list[str] = Field(default_factory=list)
+    decision_reason: str = Field(default="", max_length=3000)
+
+
 @dataclass(frozen=True, slots=True)
 class ModelResponse:
     payload: dict[str, object]
@@ -124,8 +155,7 @@ def _unwrap_payload(payload: dict[str, object]) -> dict[str, object]:
         for key in ("result", "analysis", "data", "output"):
             value = current.get(key)
             if isinstance(value, dict) and not any(
-                field in current
-                for field in ("relevant", "approved", "classification", "summary")
+                field in current for field in ("relevant", "approved", "classification", "summary")
             ):
                 nested = value
                 break
@@ -138,7 +168,7 @@ def _unwrap_payload(payload: dict[str, object]) -> dict[str, object]:
 def _text(value: object) -> str:
     if isinstance(value, str):
         return value.strip()
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, list | tuple):
         return " ".join(item for item in (_text(item) for item in value) if item)
     return ""
 
@@ -159,7 +189,7 @@ def _score(value: object, default: int = 0) -> int:
         except ValueError:
             return default
     try:
-        number = float(value) if isinstance(value, (int, float)) else float(raw)
+        number = float(value) if isinstance(value, int | float) else float(raw)
     except (TypeError, ValueError):
         return default
     if 0 <= number <= 1:
@@ -193,10 +223,7 @@ def _entity_items(value: object, dimension: str) -> list[dict[str, object]]:
             continue
         name = _clip(item.get("name") or item.get("entity") or item.get("value"), 500)
         evidence = _clip(
-            item.get("evidence")
-            or item.get("quote")
-            or item.get("excerpt")
-            or item.get("context"),
+            item.get("evidence") or item.get("quote") or item.get("excerpt") or item.get("context"),
             5000,
         )
         # An entity without a quote cannot pass grounding, so discard only that
@@ -226,10 +253,7 @@ def _technique_items(value: object) -> list[dict[str, object]]:
             continue
         name = _clip(item.get("name") or item.get("technique_name"), 200)
         evidence = _clip(
-            item.get("evidence")
-            or item.get("quote")
-            or item.get("excerpt")
-            or item.get("context"),
+            item.get("evidence") or item.get("quote") or item.get("excerpt") or item.get("context"),
             5000,
         )
         if not name or not evidence:
@@ -255,10 +279,7 @@ def _claim_items(value: object) -> list[dict[str, object]]:
         predicate = _clip(item.get("predicate") or item.get("relation"), 200)
         object_value = _clip(item.get("object") or item.get("value"), 1000)
         evidence = _clip(
-            item.get("evidence")
-            or item.get("quote")
-            or item.get("excerpt")
-            or item.get("context"),
+            item.get("evidence") or item.get("quote") or item.get("excerpt") or item.get("context"),
             5000,
         )
         if not subject or not predicate or not object_value or not evidence:
@@ -292,10 +313,7 @@ def _observable_items(value: object) -> list[dict[str, object]]:
             4000,
         )
         evidence = _clip(
-            item.get("evidence")
-            or item.get("quote")
-            or item.get("excerpt")
-            or item.get("context"),
+            item.get("evidence") or item.get("quote") or item.get("excerpt") or item.get("context"),
             5000,
         )
         disposition = _text(item.get("disposition") or item.get("verdict")).casefold()
@@ -332,9 +350,7 @@ def _observable_items(value: object) -> list[dict[str, object]]:
             item.get("decision_reason") or item.get("reason") or evidence,
             2000,
         )
-        indicator_candidate = _boolean(
-            item.get("indicator_candidate"), disposition == "malicious"
-        )
+        indicator_candidate = _boolean(item.get("indicator_candidate"), disposition == "malicious")
         normalized.append(
             {
                 "type": observable_type,
@@ -412,13 +428,9 @@ def _normalize_verification_payload(payload: dict[str, object]) -> dict[str, obj
     return {
         "approved": _boolean(raw.get("approved", raw.get("is_approved"))),
         "confidence": _score(raw.get("confidence", raw.get("confidence_score")), 0),
-        "evidence_coverage": _score(
-            raw.get("evidence_coverage", raw.get("evidenceCoverage")), 0
-        ),
+        "evidence_coverage": _score(raw.get("evidence_coverage", raw.get("evidenceCoverage")), 0),
         "issues": _string_items(raw.get("issues")),
-        "contradiction_found": _boolean(
-            raw.get("contradiction_found", raw.get("contradiction"))
-        ),
+        "contradiction_found": _boolean(raw.get("contradiction_found", raw.get("contradiction"))),
         "decision_reason": _clip(raw.get("decision_reason") or raw.get("reason"), 3000),
     }
 
@@ -528,6 +540,65 @@ contradiction_found,decision_reason。"""
         AIVerificationPayload.model_validate(_normalize_verification_payload(response.payload)),
         response.latency_ms,
     )
+
+
+def analyze_campaign_with_model(
+    config: AIModelConfig,
+    *,
+    event: dict[str, object],
+    campaign_candidates: list[dict[str, object]],
+    event_candidates: list[dict[str, object]],
+) -> tuple[AICampaignDecision, int]:
+    system = """你是无人值守APT情报系统中的Campaign聚类分析员。只返回一个JSON对象。
+Campaign表示同一攻击者围绕同一行动目标、主题或基础设施开展的一组相互关联但彼此独立的攻击事件。
+不要把“同一攻击者的所有事件”归为一个Campaign，也不要把同一事件的重复报道当作多个事件。
+只有至少两个独立关联信号支持时才能归类，例如共享专用基础设施、目标群体、恶意工具、显著技术组合、
+诱饵主题与紧密时间窗口。仅共享攻击者、通用ATT&CK技术或时间接近均不足以归类。
+优先加入候选Campaign；只有不存在合适Campaign且至少一个候选事件与当前事件形成稳定行动关系时才能新建。
+证据不足必须返回independent，禁止猜测行动名称或补充输入之外的事实。
+action只能是join_existing、create_new、independent。campaign_id只能从候选Campaign ID选择；
+related_event_ids只能从候选事件ID选择。stage只能是MITRE ATT&CK战术阶段对应的英文枚举，
+无法判断用unknown。
+confidence为0到100整数。输出字段：action,campaign_id,campaign_name,description,stage,confidence,
+evidence_note,related_event_ids,decision_reason。evidence_note和decision_reason必须明确写出支持或拒绝归类的信号。"""
+    user_payload = {
+        "current_event": event,
+        "existing_campaign_candidates": campaign_candidates,
+        "unassigned_event_candidates": event_candidates,
+    }
+    response = _chat(
+        config,
+        [
+            {"role": "system", "content": system},
+            {
+                "role": "user",
+                "content": json.dumps(user_payload, ensure_ascii=False),
+            },
+        ],
+    )
+    raw = response.payload
+    action = _text(raw.get("action")).casefold()
+    if action not in {"join_existing", "create_new", "independent"}:
+        action = "independent"
+    stage = _text(raw.get("stage")).casefold().replace("_", "-")
+    if stage not in CAMPAIGN_STAGES:
+        stage = "unknown"
+    decision = AICampaignDecision.model_validate(
+        {
+            "action": action,
+            "campaign_id": _clip(raw.get("campaign_id"), 100) or None,
+            "campaign_name": _clip(raw.get("campaign_name"), 300),
+            "description": _clip(raw.get("description"), 3000),
+            "stage": stage,
+            "confidence": _score(raw.get("confidence"), 0),
+            "evidence_note": _clip(raw.get("evidence_note"), 3000),
+            "related_event_ids": [
+                _clip(item, 100) for item in _items(raw.get("related_event_ids"))
+            ],
+            "decision_reason": _clip(raw.get("decision_reason") or raw.get("reason"), 3000),
+        }
+    )
+    return decision, response.latency_ms
 
 
 def test_model_connection(config: AIModelConfig) -> tuple[int, str]:

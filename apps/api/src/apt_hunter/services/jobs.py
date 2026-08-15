@@ -101,6 +101,14 @@ def dispatch_job(job: OperationJob) -> None:
             task_id=job.task_id,
         )
         return
+    if job.job_type == "campaign_clustering":
+        from apt_hunter.tasks.analysis import cluster_campaign_event
+
+        cluster_campaign_event.apply_async(
+            args=[str(job.subject_id), str(job.id)],
+            task_id=job.task_id,
+        )
+        return
     raise ValueError(f"Unsupported job type: {job.job_type}")
 
 

@@ -9,6 +9,7 @@ import {
   GitBranchPlusIcon,
   ListChecksIcon,
   PlusIcon,
+  RefreshCwIcon,
   ShieldUserIcon,
   TargetIcon,
   Trash2Icon,
@@ -48,9 +49,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import {
   assignCampaignEvent,
+  backfillCampaigns,
+  campaignAutomationQueryKey,
   campaignQueryKey,
   createCampaign,
   getCampaign,
+  getCampaignAutomationStatus,
   listCampaigns,
   removeCampaignEvent,
 } from "@/features/campaigns/campaign-api"
@@ -603,6 +607,7 @@ function CampaignDetailPanel({
 }
 
 export function CampaignsPage() {
+  const queryClient = useQueryClient()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const campaignsQuery = useQuery({
@@ -616,6 +621,26 @@ export function CampaignsPage() {
   const watchRulesQuery = useQuery({
     queryKey: watchRuleQueryKey,
     queryFn: listWatchRules,
+  })
+  const automationQuery = useQuery({
+    queryKey: campaignAutomationQueryKey,
+    queryFn: getCampaignAutomationStatus,
+    refetchInterval: 15_000,
+  })
+  const backfillMutation = useMutation({
+    mutationFn: () => backfillCampaigns({ limit: 200, force: true }),
+    onSuccess: (result) => {
+      toast.success(
+        result.queued
+          ? `已将 ${result.queued} 个事件加入AI聚类队列`
+          : "当前没有需要重新扫描的事件"
+      )
+      void queryClient.invalidateQueries({
+        queryKey: campaignAutomationQueryKey,
+      })
+      void queryClient.invalidateQueries({ queryKey: campaignQueryKey })
+    },
+    onError: (error: Error) => toast.error(error.message),
   })
   const campaigns = campaignsQuery.data ?? []
   const selected =
@@ -639,16 +664,47 @@ export function CampaignsPage() {
               AI 将相关事件归纳为持续行动；人工只在阅读时纠正或补充
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)} variant="outline">
-            <PlusIcon data-icon="inline-start" />
-            人工补录
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge
+              variant={automationQuery.data?.ready ? "confirmed" : "outline"}
+            >
+              {automationQuery.data?.ready ? "AI聚类运行中" : "AI聚类未就绪"}
+            </Badge>
+            <Button
+              disabled={
+                !automationQuery.data?.ready || backfillMutation.isPending
+              }
+              onClick={() => backfillMutation.mutate()}
+              variant="outline"
+            >
+              <RefreshCwIcon data-icon="inline-start" />
+              {backfillMutation.isPending ? "正在排队" : "重新扫描"}
+            </Button>
+            <Button onClick={() => setCreateOpen(true)} variant="outline">
+              <PlusIcon data-icon="inline-start" />
+              人工补录
+            </Button>
+          </div>
         </div>
         <Alert className="mt-4 max-w-3xl">
           <BotIcon />
           <AlertTitle>事实由 AI 沉淀，关注由你决定</AlertTitle>
           <AlertDescription>
-            这里记录已经发生的攻击活动。需要持续跟踪时，在活动详情点击“关注此活动”，系统会自动生成监控规则。
+            {automationQuery.data ? (
+              <>
+                共 {automationQuery.data.confirmed_event_count}{" "}
+                个已确认事件，其中 {automationQuery.data.eligible_event_count}{" "}
+                个具备聚类证据；已自动归类{" "}
+                {automationQuery.data.assigned_event_count} 个，剩余{" "}
+                {automationQuery.data.unassigned_event_count} 个待发现稳定关联
+                {automationQuery.data.pending_job_count
+                  ? `，${automationQuery.data.pending_job_count} 个正在排队处理`
+                  : ""}
+                。需要持续跟踪时，在活动详情点击“关注此活动”，系统会自动生成监控规则。
+              </>
+            ) : (
+              "这里记录已经发生的攻击活动。系统会自动发现稳定关联，人工只需在阅读时纠错。"
+            )}
           </AlertDescription>
         </Alert>
       </header>

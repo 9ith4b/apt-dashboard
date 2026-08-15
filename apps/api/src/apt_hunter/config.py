@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     article_max_bytes: int = 5_242_880
     max_compression_ratio: int = Field(default=100, ge=10, le=1000)
     enrichment_scheduler_batch_size: int = 10
+    campaign_scheduler_batch_size: int = Field(default=10, ge=1, le=100)
     ai_secrets_key: SecretStr | None = None
     auth_enabled: bool = False
     session_cookie_name: str = "apt_hunter_session"
