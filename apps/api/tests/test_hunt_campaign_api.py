@@ -229,6 +229,26 @@ def test_campaign_membership_requires_human_evidence_and_is_reversible(
     assert campaign["events"][0]["evidence_note"]
     assert hunt_campaign_client.get("/api/v1/campaigns").json()[0]["stages"] == ["initial-access"]
 
+    watch_rule = hunt_campaign_client.post(
+        "/api/v1/watch-rules",
+        json={
+            "name": "Follow Operation Dream Job",
+            "description": "Created directly from the campaign detail.",
+            "conditions": {"campaign_ids": [campaign["id"]]},
+            "severity": "high",
+            "enabled": True,
+            "created_by": "analyst",
+        },
+    )
+    assert watch_rule.status_code == 201
+    preview = hunt_campaign_client.post(
+        f"/api/v1/watch-rules/{watch_rule.json()['id']}/preview"
+    )
+    assert preview.status_code == 200
+    assert preview.json()["match_count"] == 1
+    assert preview.json()["matches"][0]["subject_id"] == event["id"]
+    assert preview.json()["matches"][0]["matched_on"]["campaign_ids"] == [campaign["id"]]
+
     removed = hunt_campaign_client.delete(
         f"/api/v1/campaigns/{campaign['id']}/events/{event['id']}"
         f"?expected_version={campaign['version']}"

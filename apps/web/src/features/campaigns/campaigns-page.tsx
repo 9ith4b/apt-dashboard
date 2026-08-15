@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AlertCircleIcon,
+  BellPlusIcon,
+  BellRingIcon,
+  BotIcon,
   CalendarRangeIcon,
   FlagTriangleRightIcon,
   GitBranchPlusIcon,
@@ -15,6 +18,7 @@ import { Link } from "react-router-dom"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -62,6 +66,11 @@ import {
 } from "@/features/intelligence/intelligence-api"
 import { formatDateTime } from "@/features/intelligence/intelligence-format"
 import type { ThreatEventSummary } from "@/features/intelligence/intelligence-types"
+import {
+  createWatchRule,
+  listWatchRules,
+  watchRuleQueryKey,
+} from "@/features/watch-rules/watch-api"
 import { cn } from "@/lib/utils"
 
 const STAGE_LABELS: Record<CampaignStage, string> = {
@@ -169,9 +178,10 @@ function CreateCampaignDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>创建 Campaign</DialogTitle>
+          <DialogTitle>人工补录攻击活动</DialogTitle>
           <DialogDescription>
-            Campaign 是分析员维护的长期活动集合；创建后再逐项确认事件归属。
+            仅用于补充系统尚未覆盖的历史活动。日常攻击活动会由 AI
+            从已确认事件中持续归纳。
           </DialogDescription>
         </DialogHeader>
         <FieldGroup>
@@ -217,7 +227,7 @@ function CreateCampaignDialog({
             onClick={() => mutation.mutate()}
           >
             <PlusIcon data-icon="inline-start" />
-            创建 Campaign
+            保存补录
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -384,12 +394,37 @@ function AssignEventDialog({
 function CampaignDetailPanel({
   campaign,
   events,
+  isWatched,
 }: {
   campaign: CampaignDetail
   events: ThreatEventSummary[]
+  isWatched: boolean
 }) {
   const queryClient = useQueryClient()
   const [assignOpen, setAssignOpen] = useState(false)
+  const watchMutation = useMutation({
+    mutationFn: () =>
+      createWatchRule({
+        name: `关注：${campaign.name}`,
+        description: `持续关注攻击活动“${campaign.name}”的新确认事件。规则由活动详情生成，无需重复维护关键词。`,
+        conditions: {
+          campaign_ids: [campaign.id],
+          keywords: [],
+          actor_names: [],
+          observable_types: [],
+          technique_ids: [],
+          min_confidence: null,
+        },
+        severity: "high",
+        enabled: true,
+        created_by: "analyst",
+      }),
+    onSuccess: () => {
+      toast.success("已关注此攻击活动")
+      void queryClient.invalidateQueries({ queryKey: watchRuleQueryKey })
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
   const removeMutation = useMutation({
     mutationFn: (eventId: string) =>
       removeCampaignEvent(campaign.id, eventId, campaign.version),
@@ -413,17 +448,35 @@ function CampaignDetailPanel({
             >
               {STATUS_LABELS[campaign.status]}
             </Badge>
-            <Badge variant="outline">人工维护的 Campaign</Badge>
+            <Badge variant="outline">AI 持续归纳</Badge>
           </div>
           <h2 className="text-2xl leading-9 font-semibold">{campaign.name}</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {campaign.description || "暂无 Campaign 说明。"}
           </p>
         </div>
-        <Button onClick={() => setAssignOpen(true)}>
-          <GitBranchPlusIcon data-icon="inline-start" />
-          加入事件
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {isWatched ? (
+            <Button asChild variant="outline">
+              <Link to="/watch-rules">
+                <BellRingIcon data-icon="inline-start" />
+                已关注 · 查看规则
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              disabled={watchMutation.isPending}
+              onClick={() => watchMutation.mutate()}
+            >
+              <BellPlusIcon data-icon="inline-start" />
+              {watchMutation.isPending ? "正在关注…" : "关注此活动"}
+            </Button>
+          )}
+          <Button onClick={() => setAssignOpen(true)} variant="outline">
+            <GitBranchPlusIcon data-icon="inline-start" />
+            调整事件归属
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -458,7 +511,7 @@ function CampaignDetailPanel({
 
       <Card>
         <CardHeader>
-          <CardTitle>Campaign 阶段时间线</CardTitle>
+          <CardTitle>攻击活动阶段时间线</CardTitle>
           <CardDescription>
             {formatDateTime(campaign.first_seen)} 至{" "}
             {formatDateTime(campaign.last_seen)}
@@ -528,12 +581,11 @@ function CampaignDetailPanel({
                 </EmptyMedia>
                 <EmptyTitle>Campaign 还没有事件</EmptyTitle>
                 <EmptyDescription>
-                  点击“加入事件”，逐项确认事件归属和攻击阶段。
+                  AI
+                  归纳到该活动的新事件会显示在这里；你也可以在发现错误或缺失时人工修正。
                 </EmptyDescription>
               </EmptyHeader>
-              <Button onClick={() => setAssignOpen(true)}>
-                加入第一个事件
-              </Button>
+              <Button onClick={() => setAssignOpen(true)}>人工补充事件</Button>
             </Empty>
           )}
         </CardContent>
@@ -561,6 +613,10 @@ export function CampaignsPage() {
     queryKey: eventQueryKey,
     queryFn: listThreatEvents,
   })
+  const watchRulesQuery = useQuery({
+    queryKey: watchRuleQueryKey,
+    queryFn: listWatchRules,
+  })
   const campaigns = campaignsQuery.data ?? []
   const selected =
     campaigns.find((campaign) => campaign.id === selectedId) ?? campaigns[0]
@@ -573,21 +629,28 @@ export function CampaignsPage() {
   return (
     <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]">
       <header className="border-b border-border bg-surface px-4 py-4 sm:px-6">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
             <div className="flex items-center gap-2">
               <CalendarRangeIcon className="size-5 text-primary" />
-              <h1 className="text-xl font-semibold">Campaign 时间线</h1>
+              <h1 className="text-xl font-semibold">攻击活动</h1>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              基于AI事件持续追踪长期行动，人工按需整理或修正阶段归属
+              AI 将相关事件归纳为持续行动；人工只在阅读时纠正或补充
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => setCreateOpen(true)} variant="outline">
             <PlusIcon data-icon="inline-start" />
-            新建 Campaign
+            人工补录
           </Button>
         </div>
+        <Alert className="mt-4 max-w-3xl">
+          <BotIcon />
+          <AlertTitle>事实由 AI 沉淀，关注由你决定</AlertTitle>
+          <AlertDescription>
+            这里记录已经发生的攻击活动。需要持续跟踪时，在活动详情点击“关注此活动”，系统会自动生成监控规则。
+          </AlertDescription>
+        </Alert>
       </header>
 
       {campaignsQuery.isPending ? (
@@ -611,15 +674,23 @@ export function CampaignsPage() {
             <EmptyMedia variant="icon">
               <FlagTriangleRightIcon />
             </EmptyMedia>
-            <EmptyTitle>还没有 Campaign</EmptyTitle>
+            <EmptyTitle>AI 尚未归纳出攻击活动</EmptyTitle>
             <EmptyDescription>
-              创建一个长期行动容器，再把已确认事件按阶段逐项加入时间线。
+              当多个确认事件在攻击者、基础设施、技术或时间窗口上形成稳定关联后，将自动沉淀在这里。
             </EmptyDescription>
           </EmptyHeader>
-          <Button onClick={() => setCreateOpen(true)}>
-            <PlusIcon data-icon="inline-start" />
-            创建第一个 Campaign
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button asChild>
+              <Link to="/events">
+                <ListChecksIcon data-icon="inline-start" />
+                查看已确认事件
+              </Link>
+            </Button>
+            <Button onClick={() => setCreateOpen(true)} variant="outline">
+              <PlusIcon data-icon="inline-start" />
+              补录历史活动
+            </Button>
+          </div>
         </Empty>
       ) : (
         <div className="grid min-h-0 lg:grid-cols-[22rem_minmax(0,1fr)]">
@@ -660,6 +731,11 @@ export function CampaignsPage() {
               <CampaignDetailPanel
                 campaign={detailQuery.data}
                 events={eventsQuery.data ?? []}
+                isWatched={Boolean(
+                  watchRulesQuery.data?.some((rule) =>
+                    rule.conditions.campaign_ids.includes(detailQuery.data.id)
+                  )
+                )}
               />
             )}
           </main>

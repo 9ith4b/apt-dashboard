@@ -52,7 +52,7 @@ def create_watch_rule(payload: WatchRuleCreate, session: DbSession) -> WatchRule
     rule = WatchRule(
         name=payload.name.strip(),
         description=payload.description.strip(),
-        conditions=payload.conditions.model_dump(),
+        conditions=payload.conditions.model_dump(mode="json"),
         severity=payload.severity,
         enabled=payload.enabled,
         created_by=payload.created_by,
@@ -87,7 +87,7 @@ def update_watch_rule(
 ) -> WatchRuleRead:
     changes = payload.model_dump(exclude={"expected_version"}, exclude_unset=True)
     if "conditions" in changes and payload.conditions is not None:
-        changes["conditions"] = payload.conditions.model_dump()
+        changes["conditions"] = payload.conditions.model_dump(mode="json")
     if "name" in changes and isinstance(changes["name"], str):
         changes["name"] = changes["name"].strip()
     changes["version"] = WatchRule.version + 1

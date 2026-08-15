@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class WatchConditions(BaseModel):
+    campaign_ids: list[UUID] = Field(default_factory=list, max_length=20)
     keywords: list[str] = Field(default_factory=list, max_length=20)
     actor_names: list[str] = Field(default_factory=list, max_length=20)
     observable_types: list[str] = Field(default_factory=list, max_length=10)
@@ -16,6 +17,7 @@ class WatchConditions(BaseModel):
     def require_condition(self) -> "WatchConditions":
         if not any(
             (
+                self.campaign_ids,
                 self.keywords,
                 self.actor_names,
                 self.observable_types,

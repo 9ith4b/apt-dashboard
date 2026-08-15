@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from apt_hunter.models import (
+    CampaignEvent,
     EventActor,
     EventObservable,
     EventTechnique,
@@ -26,6 +27,7 @@ class EventContext:
     title: str
     summary: str
     confidence: int
+    campaign_ids: tuple[UUID, ...]
     actor_names: tuple[str, ...]
     observable_types: tuple[str, ...]
     observable_values: tuple[str, ...]
@@ -47,6 +49,13 @@ def event_contexts(session: Session, event_ids: list[UUID] | None = None) -> lis
         return []
 
     actor_names: dict[UUID, list[str]] = defaultdict(list)
+    campaign_ids: dict[UUID, list[UUID]] = defaultdict(list)
+    for event_id, campaign_id in session.execute(
+        select(CampaignEvent.event_id, CampaignEvent.campaign_id).where(
+            CampaignEvent.event_id.in_(ids)
+        )
+    ):
+        campaign_ids[event_id].append(campaign_id)
     for event_id, canonical_name, reported_name in session.execute(
         select(EventActor.event_id, ThreatActor.canonical_name, EventActor.reported_name)
         .join(ThreatActor, ThreatActor.id == EventActor.actor_id)
@@ -78,6 +87,7 @@ def event_contexts(session: Session, event_ids: list[UUID] | None = None) -> lis
             title=event.title,
             summary=event.summary,
             confidence=event.confidence_analyst or event.confidence_auto or 0,
+            campaign_ids=tuple(sorted(set(campaign_ids[event.id]), key=str)),
             actor_names=tuple(sorted(set(actor_names[event.id]))),
             observable_types=tuple(sorted(set(observable_types[event.id]))),
             observable_values=tuple(sorted(set(observable_values[event.id]))),
@@ -89,6 +99,14 @@ def event_contexts(session: Session, event_ids: list[UUID] | None = None) -> lis
 
 def match_event(conditions: WatchConditions, context: EventContext) -> dict[str, object] | None:
     matched: dict[str, object] = {}
+    if conditions.campaign_ids:
+        available_campaigns = set(context.campaign_ids)
+        values = [
+            value for value in conditions.campaign_ids if value in available_campaigns
+        ]
+        if not values:
+            return None
+        matched["campaign_ids"] = [str(value) for value in values]
     corpus = " ".join(
         (
             context.title,

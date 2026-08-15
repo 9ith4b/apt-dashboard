@@ -9,6 +9,7 @@ const rule = {
   name: "Lazarus fake interview",
   description: "Track confirmed fake interview activity.",
   conditions: {
+    campaign_ids: [],
     keywords: ["fake interview"],
     actor_names: ["Lazarus"],
     observable_types: ["domain"],
@@ -111,7 +112,7 @@ describe("watch rules", () => {
       )
     })
 
-    await user.click(screen.getByRole("button", { name: "新建规则" }))
+    await user.click(screen.getByRole("button", { name: "自定义监控规则" }))
     expect(screen.getByRole("dialog")).toBeInTheDocument()
     expect(screen.getByLabelText("攻击组织")).toBeInTheDocument()
   })

@@ -1,4 +1,5 @@
 export type WatchConditions = {
+  campaign_ids: string[]
   keywords: string[]
   actor_names: string[]
   observable_types: string[]

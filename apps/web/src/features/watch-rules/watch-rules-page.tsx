@@ -3,6 +3,7 @@ import {
   BellRingIcon,
   EyeIcon,
   FilterIcon,
+  FlagTriangleRightIcon,
   PlusIcon,
   RadarIcon,
   ShieldCheckIcon,
@@ -90,6 +91,7 @@ function RuleForm({
     name: name.trim(),
     description: description.trim(),
     conditions: {
+      campaign_ids: [],
       keywords: splitValues(keywords),
       actor_names: splitValues(actors),
       observable_types: splitValues(observableTypes),
@@ -228,6 +230,9 @@ function RuleForm({
 
 function ConditionBadges({ rule }: { rule: WatchRule }) {
   const items = [
+    ...(rule.conditions.campaign_ids.length
+      ? [`攻击活动 · ${rule.conditions.campaign_ids.length} 个`]
+      : []),
     ...rule.conditions.keywords.map((value) => `关键词 · ${value}`),
     ...rule.conditions.actor_names.map((value) => `组织 · ${value}`),
     ...rule.conditions.observable_types.map((value) => `类型 · ${value}`),
@@ -300,31 +305,40 @@ export function WatchRulesPage() {
             <h1 className="text-xl font-semibold">关注规则</h1>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            用结构化条件持续监测已确认事件，并生成可追溯站内通知
+            表达你希望持续关注的对象；攻击活动本身由 AI 自动沉淀
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusIcon data-icon="inline-start" />
-              新建规则
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>新建关注规则</DialogTitle>
-              <DialogDescription>
-                先预览历史命中，再决定是否启用持续监测。
-              </DialogDescription>
-            </DialogHeader>
-            <RuleForm
-              isSubmitting={createMutation.isPending}
-              onPreview={(payload) => previewNew.mutate(payload)}
-              onSubmit={(payload) => createMutation.mutate(payload)}
-              previewCount={previewNew.data?.match_count}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link to="/campaigns">
+              <FlagTriangleRightIcon data-icon="inline-start" />
+              从攻击活动关注
+            </Link>
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusIcon data-icon="inline-start" />
+                自定义监控规则
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>自定义监控规则</DialogTitle>
+                <DialogDescription>
+                  用于跨活动组合关键词、组织、IOC 类型或 ATT&amp;CK
+                  技术；关注单个活动请直接从活动详情创建。
+                </DialogDescription>
+              </DialogHeader>
+              <RuleForm
+                isSubmitting={createMutation.isPending}
+                onPreview={(payload) => previewNew.mutate(payload)}
+                onSubmit={(payload) => createMutation.mutate(payload)}
+                previewCount={previewNew.data?.match_count}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </header>
 
       {rulesQuery.isPending ? (
@@ -350,13 +364,21 @@ export function WatchRulesPage() {
             </EmptyMedia>
             <EmptyTitle>还没有关注规则</EmptyTitle>
             <EmptyDescription>
-              创建规则后可先预览历史事件，再持续接收新命中通知。
+              可从一个已沉淀的攻击活动直接关注，或创建跨对象的自定义监控规则。
             </EmptyDescription>
           </EmptyHeader>
-          <Button onClick={() => setDialogOpen(true)}>
-            <PlusIcon data-icon="inline-start" />
-            创建第一个规则
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button asChild>
+              <Link to="/campaigns">
+                <FlagTriangleRightIcon data-icon="inline-start" />
+                从攻击活动关注
+              </Link>
+            </Button>
+            <Button onClick={() => setDialogOpen(true)} variant="outline">
+              <PlusIcon data-icon="inline-start" />
+              自定义监控规则
+            </Button>
+          </div>
         </Empty>
       ) : (
         <div className="grid min-h-0 flex-1 lg:grid-cols-[20rem_minmax(0,1fr)]">

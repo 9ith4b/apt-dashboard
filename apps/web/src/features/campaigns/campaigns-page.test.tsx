@@ -59,6 +59,33 @@ describe("Campaign timeline", () => {
         if (url === "/api/v1/campaigns?limit=200") {
           return Promise.resolve(jsonResponse([campaign]))
         }
+        if (url === "/api/v1/watch-rules" && init?.method === "POST") {
+          return Promise.resolve(
+            jsonResponse({
+              id: "44444444-4444-4444-8444-444444444444",
+              name: `关注：${campaign.name}`,
+              description: "Track this campaign.",
+              conditions: {
+                campaign_ids: [campaign.id],
+                keywords: [],
+                actor_names: [],
+                observable_types: [],
+                technique_ids: [],
+                min_confidence: null,
+              },
+              severity: "high",
+              enabled: true,
+              created_by: "analyst",
+              version: 1,
+              hit_count: 0,
+              created_at: "2026-08-08T08:00:00Z",
+              updated_at: "2026-08-08T08:00:00Z",
+            })
+          )
+        }
+        if (url === "/api/v1/watch-rules") {
+          return Promise.resolve(jsonResponse([]))
+        }
         if (url === "/api/v1/events?limit=200") {
           return Promise.resolve(jsonResponse([linkedEvent, availableEvent]))
         }
@@ -106,7 +133,17 @@ describe("Campaign timeline", () => {
     expect(
       await screen.findByText("The report explicitly uses the operation name.")
     ).toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "加入事件" }))
+    fireEvent.click(screen.getByRole("button", { name: "关注此活动" }))
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/v1/watch-rules",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining(campaign.id),
+        })
+      )
+    )
+    fireEvent.click(screen.getByRole("button", { name: "调整事件归属" }))
     expect(
       await screen.findByRole("heading", { name: "确认 Campaign 事件归属" })
     ).toBeInTheDocument()
