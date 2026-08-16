@@ -50,7 +50,14 @@ def _filtered_actor_ids(
 ) -> list[UUID]:
     start, end = _date_bounds(date_from, date_to)
     observed_at = func.coalesce(ThreatEvent.first_seen, ThreatEvent.created_at)
-    statement = select(EventActor.actor_id).join(ThreatEvent, ThreatEvent.id == EventActor.event_id)
+    statement = (
+        select(EventActor.actor_id)
+        .join(ThreatEvent, ThreatEvent.id == EventActor.event_id)
+        .where(
+            ThreatEvent.status == "confirmed",
+            ThreatEvent.superseded_by_id.is_(None),
+        )
+    )
     if start is not None:
         statement = statement.where(observed_at >= start)
     if end is not None:
@@ -74,7 +81,11 @@ def _event_rows(
     statement = (
         select(EventActor, ThreatEvent)
         .join(ThreatEvent, ThreatEvent.id == EventActor.event_id)
-        .where(EventActor.actor_id.in_(actor_ids))
+        .where(
+            EventActor.actor_id.in_(actor_ids),
+            ThreatEvent.status == "confirmed",
+            ThreatEvent.superseded_by_id.is_(None),
+        )
     )
     if start is not None:
         statement = statement.where(observed_at >= start)

@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from apt_hunter.db.session import SessionLocal
@@ -31,6 +31,9 @@ from apt_hunter.services.diamond import DiamondResult
 from apt_hunter.services.event_clustering import generate_merge_candidates
 from apt_hunter.services.knowledge import sync_event_knowledge
 from apt_hunter.services.watch_rules import evaluate_event_rules
+
+APT_RELEVANT_CLASSIFICATIONS = frozenset({"apt_event", "actor_research"})
+APT_EVENT_CLASSIFICATIONS = frozenset({"apt_event"})
 
 
 @dataclass(slots=True)
@@ -170,9 +173,7 @@ def _ai_evidence(analysis: AIAnalysisPayload) -> list[dict[str, object]]:
 def _merge_observable_assessments(
     candidates: list[dict[str, object]], analysis: AIAnalysisPayload
 ) -> list[dict[str, object]]:
-    assessments = {
-        (item.type.casefold(), item.normalized): item for item in analysis.observables
-    }
+    assessments = {(item.type.casefold(), item.normalized): item for item in analysis.observables}
     merged: list[dict[str, object]] = []
     for candidate in candidates:
         key = (
@@ -229,26 +230,18 @@ def _fallback_outcome(
         initial_relevance_score,
         deterministic.confidence if has_threat_context else 0,
     )
-    unattended = bool(policy_values["unattended_mode"])
-    relevant = fallback_score >= _int_value(policy_values["relevance_threshold"], 60)
-    if unattended:
-        review_status = "approved" if relevant else "rejected"
-        report_status = "approved" if relevant else "rejected"
-    else:
-        review_status = "pending"
-        report_status = "candidate"
     return AutomationOutcome(
         enabled=True,
         automation_status="fallback",
-        review_status=review_status,
-        report_status=report_status,
+        review_status="pending",
+        report_status="candidate",
         method_version=f"ai-fallback:{PROMPT_VERSION}",
         model_config_id=model_config_id,
         relevance_score=fallback_score,
-        classification="apt_event" if relevant else "irrelevant",
+        classification="irrelevant",
         decision_reason=(
-            "AI连续调用异常，系统已使用本地提取信号完成降级决策；"
-            "该结果已保留异常记录，可在阅读时纠正。"
+            "AI连续调用异常；本地提取只保留为候选证据，不会自动确认APT事件。"
+            "系统已保留异常记录并等待自动重试。"
         ),
         confidence=deterministic.confidence,
         actors=deterministic.actors,
@@ -262,6 +255,51 @@ def _fallback_outcome(
         exception_description=exception_description,
         exception_details=exception_details or {},
     )
+
+
+def _automation_decision(
+    *,
+    relevant: bool,
+    relevance_score: int,
+    classification: str,
+    verified_confidence: int,
+    verified_coverage: int,
+    verification_approved: bool,
+    contradictions: bool,
+    verification_failed: bool,
+    policy_values: Mapping[str, object],
+) -> tuple[str, str, str, bool, bool, bool]:
+    """Apply strict APT scope and evidence gates without unattended bypasses."""
+    in_apt_scope = (
+        classification in APT_RELEVANT_CLASSIFICATIONS
+        and relevant
+        and relevance_score >= _int_value(policy_values["relevance_threshold"], 60)
+    )
+    scope_conflict = (classification not in APT_RELEVANT_CLASSIFICATIONS and relevant) or (
+        classification in APT_RELEVANT_CLASSIFICATIONS
+        and not relevant
+        and relevance_score >= _int_value(policy_values["relevance_threshold"], 60)
+    )
+    gates_approved = (
+        in_apt_scope
+        and verified_confidence >= _int_value(policy_values["auto_approve_threshold"], 85)
+        and verified_coverage >= _int_value(policy_values["minimum_evidence_coverage"], 70)
+        and verification_approved
+        and not contradictions
+        and not verification_failed
+    )
+    gates_rejected = (
+        not in_apt_scope
+        and not scope_conflict
+        and relevance_score <= _int_value(policy_values["auto_reject_threshold"], 20)
+        and verification_approved
+        and not verification_failed
+    )
+    if gates_approved:
+        return "auto_approved", "approved", "approved", True, False, scope_conflict
+    if gates_rejected:
+        return "auto_rejected", "rejected", "rejected", False, True, scope_conflict
+    return "needs_review", "pending", "candidate", False, False, scope_conflict
 
 
 def run_ai_automation(
@@ -401,41 +439,35 @@ def run_ai_automation(
         _int_value(verification.get("confidence"), grounded.confidence),
     )
     contradictions = bool(grounded.contradictions) or bool(verification.get("contradiction_found"))
-    gates_approved = (
-        grounded.relevant
-        and grounded.relevance_score >= int(policy_values["relevance_threshold"])
-        and verified_confidence >= int(policy_values["auto_approve_threshold"])
-        and verified_coverage >= int(policy_values["minimum_evidence_coverage"])
-        and bool(verification.get("approved"))
-        and not contradictions
-        and not verification_failed
-    )
-    gates_rejected = (
-        not grounded.relevant
-        and grounded.relevance_score <= int(policy_values["auto_reject_threshold"])
-        and bool(verification.get("approved"))
-        and not verification_failed
+    (
+        automation_status,
+        review_status,
+        report_status,
+        gates_approved,
+        gates_rejected,
+        scope_conflict,
+    ) = _automation_decision(
+        relevant=grounded.relevant,
+        relevance_score=grounded.relevance_score,
+        classification=grounded.classification,
+        verified_confidence=verified_confidence,
+        verified_coverage=verified_coverage,
+        verification_approved=bool(verification.get("approved")),
+        contradictions=contradictions,
+        verification_failed=verification_failed,
+        policy_values=policy_values,
     )
     unattended = bool(policy_values["unattended_mode"])
-    if gates_approved or (unattended and grounded.relevant):
-        automation_status = "auto_approved"
-        review_status = "approved"
-        report_status = "approved"
-    elif gates_rejected or (unattended and not grounded.relevant):
-        automation_status = "auto_rejected"
-        review_status = "rejected"
-        report_status = "rejected"
-    else:
-        automation_status = "needs_review"
-        review_status = "pending"
-        report_status = "candidate"
 
     exception_type: str | None = None
     exception_title: str | None = None
     exception_description: str | None = None
     gates_need_attention = not gates_approved and not gates_rejected
     if automation_status == "needs_review" or (unattended and gates_need_attention):
-        if verification_failed:
+        if scope_conflict:
+            exception_type = "apt_scope_conflict"
+            exception_title = "AI分类与APT相关性冲突"
+        elif verification_failed:
             exception_type = "ai_verification_failed"
             exception_title = "AI验证阶段失败"
         elif contradictions:
@@ -448,7 +480,7 @@ def run_ai_automation(
             exception_type = "low_confidence"
             exception_title = "AI置信度不足"
         exception_description = (
-            f"AI已在无人值守模式下继续处理：{grounded.decision_reason}"
+            f"无人值守模式已阻止不满足门禁的材料进入APT知识库：{grounded.decision_reason}"
             if unattended
             else grounded.decision_reason
         )
@@ -473,7 +505,7 @@ def run_ai_automation(
         evidence_coverage=verified_coverage,
         decision_reason=grounded.decision_reason,
         confidence=verified_confidence,
-        actors=_merge_entities(primary_actors, deterministic.actors),
+        actors=primary_actors,
         capabilities=_merge_entities(primary_capabilities, deterministic.capabilities),
         infrastructure=_merge_entities(primary_infrastructure, deterministic.infrastructure),
         victims=_merge_entities(primary_victims, deterministic.victims),
@@ -544,6 +576,43 @@ def _resolve_stale_ai_exceptions(
         item.resolved_at = datetime.now(UTC)
 
 
+def retract_event_for_report(
+    session: Session,
+    report: Report,
+    *,
+    force: bool = False,
+) -> None:
+    """Retract an event when this report no longer supports it.
+
+    Shared events stay confirmed while another approved report supports them.
+    The event/report link is retained for auditability.
+    """
+    event_link = session.scalar(select(EventReport).where(EventReport.report_id == report.id))
+    event = session.get(ThreatEvent, event_link.event_id) if event_link else None
+    if event is None:
+        return
+    approved_support = int(
+        session.scalar(
+            select(func.count())
+            .select_from(EventReport)
+            .join(Report, Report.id == EventReport.report_id)
+            .where(
+                EventReport.event_id == event.id,
+                EventReport.report_id != report.id,
+                Report.status == "approved",
+            )
+        )
+        or 0
+    )
+    if approved_support:
+        sync_event_actors_from_reports(session, event.id)
+        sync_event_knowledge(session, event.id)
+        return
+    if force or event.confidence_analyst is None:
+        event.status = "rejected"
+        event.version += 1
+
+
 def apply_automation_decision(
     session: Session,
     *,
@@ -573,6 +642,13 @@ def apply_automation_decision(
         }.get(analysis.review_status, "candidate")
         return
     if outcome.review_status == "pending":
+        if analysis.reviewed_by == "ai-automation":
+            analysis.review_status = "pending"
+            analysis.reviewed_at = None
+            analysis.reviewed_by = None
+            analysis.version += 1
+            report.status = "candidate"
+            retract_event_for_report(session, report)
         return
     now = datetime.now(UTC)
     analysis.review_status = outcome.review_status
@@ -596,6 +672,10 @@ def apply_automation_decision(
         )
     )
     if outcome.review_status != "approved":
+        retract_event_for_report(session, report)
+        return
+    if outcome.classification not in APT_EVENT_CLASSIFICATIONS:
+        retract_event_for_report(session, report)
         return
     policy = get_or_create_policy(session)
     if not policy.auto_create_events:

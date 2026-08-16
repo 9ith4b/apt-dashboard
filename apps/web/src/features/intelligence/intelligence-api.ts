@@ -4,7 +4,9 @@ import type {
   ActorTracking,
   ActorTrackingSummary,
   EventMergeCandidate,
+  ReportCollectionSummary,
   ReportDetail,
+  ReportScope,
   ReportSummary,
   ReportTask,
   ReviewDecision,
@@ -15,14 +17,21 @@ import type {
 } from "./intelligence-types"
 
 export const reportQueryKey = ["reports"] as const
+export const reportSummaryQueryKey = ["reports", "summary"] as const
 export const reviewQueueKey = ["reviews"] as const
 export const eventQueryKey = ["events"] as const
 export const actorQueryKey = ["actors"] as const
 export const actorTrackingQueryKey = ["actor-tracking"] as const
 export const mergeCandidateQueryKey = ["event-merge-candidates"] as const
 
-export function listReports() {
-  return apiRequest<ReportSummary[]>("/reports?limit=200")
+export function listReports(scope: ReportScope = "raw") {
+  return apiRequest<ReportSummary[]>(
+    `/reports?scope=${encodeURIComponent(scope)}&limit=200`
+  )
+}
+
+export function getReportCollectionSummary() {
+  return apiRequest<ReportCollectionSummary>("/reports/summary")
 }
 
 export function getReport(reportId: string) {

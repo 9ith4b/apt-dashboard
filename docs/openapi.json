@@ -372,6 +372,11 @@
             "title": "Auto Create Events",
             "type": "boolean"
           },
+          "auto_manage_indicators": {
+            "default": true,
+            "title": "Auto Manage Indicators",
+            "type": "boolean"
+          },
           "auto_reject_threshold": {
             "maximum": 100.0,
             "minimum": 0.0,
@@ -381,6 +386,13 @@
           "automation_enabled": {
             "title": "Automation Enabled",
             "type": "boolean"
+          },
+          "indicator_auto_threshold": {
+            "default": 80,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Indicator Auto Threshold",
+            "type": "integer"
           },
           "max_article_chars": {
             "maximum": 200000.0,
@@ -403,6 +415,11 @@
           "require_verification": {
             "default": true,
             "title": "Require Verification",
+            "type": "boolean"
+          },
+          "unattended_mode": {
+            "default": true,
+            "title": "Unattended Mode",
             "type": "boolean"
           },
           "updated_at": {
@@ -441,6 +458,11 @@
             "title": "Auto Create Events",
             "type": "boolean"
           },
+          "auto_manage_indicators": {
+            "default": true,
+            "title": "Auto Manage Indicators",
+            "type": "boolean"
+          },
           "auto_reject_threshold": {
             "maximum": 100.0,
             "minimum": 0.0,
@@ -450,6 +472,13 @@
           "automation_enabled": {
             "title": "Automation Enabled",
             "type": "boolean"
+          },
+          "indicator_auto_threshold": {
+            "default": 80,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Indicator Auto Threshold",
+            "type": "integer"
           },
           "max_article_chars": {
             "maximum": 200000.0,
@@ -472,6 +501,11 @@
           "require_verification": {
             "default": true,
             "title": "Require Verification",
+            "type": "boolean"
+          },
+          "unattended_mode": {
+            "default": true,
+            "title": "Unattended Mode",
             "type": "boolean"
           }
         },
@@ -1594,6 +1628,143 @@
         "title": "BackfillRead",
         "type": "object"
       },
+      "CampaignAutomationStatus": {
+        "properties": {
+          "assigned_event_count": {
+            "title": "Assigned Event Count",
+            "type": "integer"
+          },
+          "automation_enabled": {
+            "title": "Automation Enabled",
+            "type": "boolean"
+          },
+          "campaign_count": {
+            "title": "Campaign Count",
+            "type": "integer"
+          },
+          "confirmed_event_count": {
+            "title": "Confirmed Event Count",
+            "type": "integer"
+          },
+          "eligible_event_count": {
+            "title": "Eligible Event Count",
+            "type": "integer"
+          },
+          "last_job_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Job At"
+          },
+          "last_job_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Job Error"
+          },
+          "last_job_result": {
+            "additionalProperties": true,
+            "title": "Last Job Result",
+            "type": "object"
+          },
+          "last_job_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Job Status"
+          },
+          "model_configured": {
+            "title": "Model Configured",
+            "type": "boolean"
+          },
+          "pending_job_count": {
+            "title": "Pending Job Count",
+            "type": "integer"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "unassigned_event_count": {
+            "title": "Unassigned Event Count",
+            "type": "integer"
+          },
+          "unattended_mode": {
+            "title": "Unattended Mode",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "automation_enabled",
+          "unattended_mode",
+          "model_configured",
+          "ready",
+          "confirmed_event_count",
+          "eligible_event_count",
+          "assigned_event_count",
+          "unassigned_event_count",
+          "campaign_count",
+          "pending_job_count"
+        ],
+        "title": "CampaignAutomationStatus",
+        "type": "object"
+      },
+      "CampaignBackfillRead": {
+        "properties": {
+          "job_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Job Ids",
+            "type": "array"
+          },
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "queued",
+          "job_ids"
+        ],
+        "title": "CampaignBackfillRead",
+        "type": "object"
+      },
+      "CampaignBackfillRequest": {
+        "properties": {
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "limit": {
+            "default": 200,
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "title": "CampaignBackfillRequest",
+        "type": "object"
+      },
       "CampaignCreate": {
         "properties": {
           "description": {
@@ -2486,13 +2657,13 @@
           "confidence",
           "severity",
           "revoked",
+          "reviewed_by",
           "version",
           "observable_id",
           "observable_type",
           "value_normalized",
           "pattern",
           "reviewed_at",
-          "reviewed_by",
           "evidence_ids"
         ],
         "title": "IndicatorRead",
@@ -2511,6 +2682,10 @@
           },
           "purpose": {
             "title": "Purpose",
+            "type": "string"
+          },
+          "reviewed_by": {
+            "title": "Reviewed By",
             "type": "string"
           },
           "revoked": {
@@ -2544,6 +2719,7 @@
           "confidence",
           "severity",
           "revoked",
+          "reviewed_by",
           "version"
         ],
         "title": "IndicatorSummary",
@@ -2563,6 +2739,13 @@
               }
             ],
             "title": "Confidence"
+          },
+          "corrected_by": {
+            "default": "local-analyst",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Corrected By",
+            "type": "string"
           },
           "expected_version": {
             "minimum": 1.0,
@@ -2814,6 +2997,68 @@
       },
       "ObservableDetail": {
         "properties": {
+          "ai_confidence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Confidence"
+          },
+          "ai_decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Decided At"
+          },
+          "ai_decision_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Decision Reason"
+          },
+          "ai_disposition": {
+            "anyOf": [
+              {
+                "enum": [
+                  "malicious",
+                  "suspicious",
+                  "benign",
+                  "context"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Disposition"
+          },
+          "ai_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Role"
+          },
           "enrichments": {
             "items": {
               "$ref": "#/components/schemas/ObservableEnrichmentRead"
@@ -3147,6 +3392,68 @@
       },
       "ObservableSummary": {
         "properties": {
+          "ai_confidence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Confidence"
+          },
+          "ai_decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Decided At"
+          },
+          "ai_decision_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Decision Reason"
+          },
+          "ai_disposition": {
+            "anyOf": [
+              {
+                "enum": [
+                  "malicious",
+                  "suspicious",
+                  "benign",
+                  "context"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Disposition"
+          },
+          "ai_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Role"
+          },
           "event_count": {
             "title": "Event Count",
             "type": "integer"
@@ -3399,8 +3706,63 @@
         "title": "ReadyResponse",
         "type": "object"
       },
+      "ReportCollectionSummary": {
+        "properties": {
+          "apt": {
+            "title": "Apt",
+            "type": "integer"
+          },
+          "excluded": {
+            "title": "Excluded",
+            "type": "integer"
+          },
+          "extraction_failed": {
+            "title": "Extraction Failed",
+            "type": "integer"
+          },
+          "pending": {
+            "title": "Pending",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "apt",
+          "pending",
+          "excluded",
+          "extraction_failed"
+        ],
+        "title": "ReportCollectionSummary",
+        "type": "object"
+      },
       "ReportDetail": {
         "properties": {
+          "ai_classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Classification"
+          },
+          "ai_relevance_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Relevance Score"
+          },
           "analysis": {
             "anyOf": [
               {
@@ -3523,6 +3885,8 @@
           "extraction_status",
           "review_status",
           "confidence_auto",
+          "ai_classification",
+          "ai_relevance_score",
           "analysis"
         ],
         "title": "ReportDetail",
@@ -3530,6 +3894,28 @@
       },
       "ReportSummary": {
         "properties": {
+          "ai_classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Classification"
+          },
+          "ai_relevance_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Relevance Score"
+          },
           "canonical_url": {
             "title": "Canonical Url",
             "type": "string"
@@ -3641,7 +4027,9 @@
           "created_at",
           "extraction_status",
           "review_status",
-          "confidence_auto"
+          "confidence_auto",
+          "ai_classification",
+          "ai_relevance_score"
         ],
         "title": "ReportSummary",
         "type": "object"
@@ -4882,6 +5270,15 @@
             },
             "maxItems": 20,
             "title": "Actor Names",
+            "type": "array"
+          },
+          "campaign_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Campaign Ids",
             "type": "array"
           },
           "keywords": {
@@ -6528,6 +6925,68 @@
         ]
       }
     },
+    "/api/v1/campaigns/automation/backfill": {
+      "post": {
+        "operationId": "backfill_campaigns_api_v1_campaigns_automation_backfill_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignBackfillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignBackfillRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Backfill Campaigns",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/automation/status": {
+      "get": {
+        "operationId": "get_campaign_automation_status_api_v1_campaigns_automation_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignAutomationStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Campaign Automation Status",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
     "/api/v1/campaigns/{campaign_id}": {
       "get": {
         "operationId": "get_campaign_api_v1_campaigns__campaign_id__get",
@@ -7059,6 +7518,23 @@
           },
           {
             "in": "query",
+            "name": "observable_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Observable Type"
+            }
+          },
+          {
+            "in": "query",
             "name": "revoked",
             "required": false,
             "schema": {
@@ -7113,6 +7589,90 @@
           }
         },
         "summary": "List Indicators",
+        "tags": [
+          "indicators"
+        ]
+      }
+    },
+    "/api/v1/indicators/count": {
+      "get": {
+        "operationId": "count_indicators_api_v1_indicators_count_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "observable_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Observable Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "revoked",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Revoked"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Count Indicators Api V1 Indicators Count Get",
+                  "type": "integer"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Count Indicators",
         "tags": [
           "indicators"
         ]
@@ -7387,6 +7947,74 @@
           }
         },
         "summary": "List Observables",
+        "tags": [
+          "observables"
+        ]
+      }
+    },
+    "/api/v1/observables/count": {
+      "get": {
+        "operationId": "count_observables_api_v1_observables_count_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "observable_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Observable Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Count Observables Api V1 Observables Count Get",
+                  "type": "integer"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Count Observables",
         "tags": [
           "observables"
         ]
@@ -7787,6 +8415,21 @@
           },
           {
             "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "raw",
+              "enum": [
+                "apt",
+                "raw",
+                "excluded"
+              ],
+              "title": "Scope",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -7825,6 +8468,27 @@
           }
         },
         "summary": "List Reports",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/summary": {
+      "get": {
+        "operationId": "report_collection_summary_api_v1_reports_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportCollectionSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Report Collection Summary",
         "tags": [
           "reports"
         ]

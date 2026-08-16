@@ -167,7 +167,10 @@ def list_threat_events(
     events = list(
         session.scalars(
             select(ThreatEvent)
-            .where(ThreatEvent.superseded_by_id.is_(None))
+            .where(
+                ThreatEvent.status == "confirmed",
+                ThreatEvent.superseded_by_id.is_(None),
+            )
             .order_by(ThreatEvent.first_seen.desc().nullslast(), ThreatEvent.created_at.desc())
             .limit(limit)
         )

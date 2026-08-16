@@ -33,8 +33,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   getReport,
+  getReportCollectionSummary,
   listReports,
   reportQueryKey,
+  reportSummaryQueryKey,
 } from "@/features/intelligence/intelligence-api"
 import {
   extractionLabel,
@@ -44,6 +46,7 @@ import {
 import type {
   DiamondEntity,
   ReportDetail,
+  ReportScope,
   ReportSummary,
 } from "@/features/intelligence/intelligence-types"
 import { cn } from "@/lib/utils"
@@ -52,6 +55,21 @@ function relevanceVariant(score: number) {
   if (score >= 90) return "relevance" as const
   if (score >= 70) return "candidate" as const
   return "confirmed" as const
+}
+
+const classificationLabels: Record<string, string> = {
+  apt_event: "APT事件",
+  actor_research: "组织研究",
+  malware_analysis: "恶意软件",
+  vulnerability_activity: "漏洞动态",
+  security_news: "安全新闻",
+  irrelevant: "非APT",
+}
+
+const viewLabels: Record<ReportScope, string> = {
+  apt: "APT 情报",
+  raw: "原始材料",
+  excluded: "AI 已排除",
 }
 
 function analysisVariant(status: string | null) {
@@ -100,6 +118,7 @@ function FeedRow({
   selected: boolean
   onSelect: (reportId: string) => void
 }) {
+  const relevanceScore = report.ai_relevance_score ?? report.relevance_score
   return (
     <button
       aria-controls={selected ? "intelligence-inspector" : undefined}
@@ -121,14 +140,20 @@ function FeedRow({
           {report.title}
         </span>
         <span className="flex flex-wrap items-center gap-1.5">
-          <Badge variant={relevanceVariant(report.relevance_score)}>
-            相关性 {report.relevance_score}
+          <Badge variant={relevanceVariant(relevanceScore)}>
+            APT相关性 {relevanceScore}
           </Badge>
           <Badge variant={analysisVariant(report.extraction_status)}>
             {extractionLabel(report.extraction_status)}
           </Badge>
           {report.review_status === "approved" && (
             <Badge variant="confirmed">已确认</Badge>
+          )}
+          {report.ai_classification && (
+            <Badge variant="outline">
+              {classificationLabels[report.ai_classification] ??
+                report.ai_classification}
+            </Badge>
           )}
         </span>
         <span className="line-clamp-1 text-xs text-muted-foreground sm:text-sm">
@@ -181,6 +206,9 @@ function EventInspector({
   onOpenChange: (open: boolean) => void
 }) {
   const analysis = report?.analysis
+  const relevanceScore = report
+    ? (report.ai_relevance_score ?? report.relevance_score)
+    : 0
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -218,8 +246,8 @@ function EventInspector({
                 {report.title}
               </h3>
               <div className="mt-3 flex flex-wrap gap-1.5">
-                <Badge variant={relevanceVariant(report.relevance_score)}>
-                  相关性 {report.relevance_score}
+                <Badge variant={relevanceVariant(relevanceScore)}>
+                  APT相关性 {relevanceScore}
                 </Badge>
                 <Badge variant={analysisVariant(report.extraction_status)}>
                   {extractionLabel(report.extraction_status)}
@@ -230,6 +258,12 @@ function EventInspector({
                       置信度 {analysis.confidence_auto}
                     </Badge>
                   )}
+                {report.ai_classification && (
+                  <Badge variant="outline">
+                    {classificationLabels[report.ai_classification] ??
+                      report.ai_classification}
+                  </Badge>
+                )}
               </div>
             </div>
             <section className="flex flex-col gap-2">
@@ -306,22 +340,19 @@ function EventInspector({
 }
 
 export function IntelligenceFeedPage() {
-  const [filter, setFilter] = useState("all")
+  const [scope, setScope] = useState<ReportScope>("apt")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const reportsQuery = useQuery({
-    queryKey: reportQueryKey,
-    queryFn: listReports,
+    queryKey: [...reportQueryKey, scope],
+    queryFn: () => listReports(scope),
   })
-  const reports = (reportsQuery.data ?? []).filter(
-    (report) => report.status !== "filtered"
-  )
-  const visibleReports = reports.filter((report) => {
-    if (filter === "high") return report.relevance_score >= 80
-    if (filter === "pending") return report.review_status === "pending"
-    return true
+  const summaryQuery = useQuery({
+    queryKey: reportSummaryQueryKey,
+    queryFn: getReportCollectionSummary,
   })
-  const selected = visibleReports.find((report) => report.id === selectedId)
+  const reports = reportsQuery.data ?? []
+  const selected = reports.find((report) => report.id === selectedId)
   const detailQuery = useQuery({
     queryKey: ["report", selected?.id],
     queryFn: () => getReport(selected!.id),
@@ -334,31 +365,31 @@ export function IntelligenceFeedPage() {
         : false,
   })
 
+  const summary = summaryQuery.data
   const metrics = [
     {
       icon: FileTextIcon,
-      label: "采集材料",
-      value: reports.length,
-      note: "当前情报库",
-    },
-    {
-      icon: AlertCircleIcon,
-      label: "高相关",
-      value: reports.filter((item) => item.relevance_score >= 80).length,
-      note: "相关性 ≥ 80",
+      label: "APT 情报",
+      value: summary?.apt ?? 0,
+      note: "严格门禁后确认",
     },
     {
       icon: Clock3Icon,
-      label: "需关注",
-      value: reports.filter((item) => item.review_status === "pending").length,
-      note: "AI已处理，建议关注",
+      label: "待处理",
+      value: summary?.pending ?? 0,
+      note: "未进入APT知识库",
     },
     {
       icon: InfoIcon,
+      label: "AI 排除",
+      value: summary?.excluded ?? 0,
+      note: "非APT或低置信度",
+    },
+    {
+      icon: AlertCircleIcon,
       label: "提取异常",
-      value: reports.filter((item) => item.extraction_status === "failed")
-        .length,
-      note: "可重新富化",
+      value: summary?.extraction_failed ?? 0,
+      note: "等待自动重试",
     },
   ]
 
@@ -378,24 +409,33 @@ export function IntelligenceFeedPage() {
             <div className="flex flex-wrap items-center gap-4">
               <div>
                 <p className="workspace-kicker">Live intelligence</p>
-                <h2 className="mt-1 text-lg font-semibold">APT 候选材料</h2>
+                <h2 className="mt-1 text-lg font-semibold">
+                  {viewLabels[scope]}
+                </h2>
               </div>
               <ToggleGroup
+                aria-label="切换情报材料视图"
                 type="single"
-                value={filter}
+                value={scope}
                 variant="outline"
                 spacing={0}
                 onValueChange={(value) => {
                   if (value) {
-                    setFilter(value)
+                    setScope(value as ReportScope)
                     setSelectedId(null)
                     setInspectorOpen(false)
                   }
                 }}
               >
-                <ToggleGroupItem value="all">全部</ToggleGroupItem>
-                <ToggleGroupItem value="high">高相关</ToggleGroupItem>
-                <ToggleGroupItem value="pending">待审核</ToggleGroupItem>
+                <ToggleGroupItem value="apt">
+                  APT 情报 {summary?.apt ?? 0}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="raw">
+                  原始材料 {summary?.total ?? 0}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="excluded">
+                  AI 已排除 {summary?.excluded ?? 0}
+                </ToggleGroupItem>
               </ToggleGroup>
             </div>
             <Button variant="outline">
@@ -426,20 +466,22 @@ export function IntelligenceFeedPage() {
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
-            ) : visibleReports.length === 0 ? (
+            ) : reports.length === 0 ? (
               <Empty className="min-h-72 border-0">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <FileSearchIcon />
                   </EmptyMedia>
-                  <EmptyTitle>当前筛选下没有材料</EmptyTitle>
+                  <EmptyTitle>当前视图没有材料</EmptyTitle>
                   <EmptyDescription>
-                    RSS 候选文章会在采集后自动出现在这里。
+                    {scope === "apt"
+                      ? "材料通过严格的APT语义、证据和验证门禁后会出现在这里。"
+                      : "RSS文章会在采集后自动进入原始材料层。"}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
             ) : (
-              visibleReports.map((report) => (
+              reports.map((report) => (
                 <FeedRow
                   key={report.id}
                   report={report}

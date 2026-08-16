@@ -28,6 +28,16 @@ class ReportSummary(BaseModel):
     extraction_status: str | None
     review_status: str | None
     confidence_auto: int | None
+    ai_classification: str | None
+    ai_relevance_score: int | None
+
+
+class ReportCollectionSummary(BaseModel):
+    total: int
+    apt: int
+    pending: int
+    excluded: int
+    extraction_failed: int
 
 
 class AnalysisRead(BaseModel):

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from apt_hunter.models import (
     EventActor,
     EventReport,
+    Report,
     ReportAnalysis,
     ThreatActor,
     ThreatActorAlias,
@@ -206,7 +207,8 @@ def sync_event_actors_from_reports(session: Session, event_id: UUID) -> None:
     analyses = session.scalars(
         select(ReportAnalysis)
         .join(EventReport, EventReport.report_id == ReportAnalysis.report_id)
-        .where(EventReport.event_id == event_id)
+        .join(Report, Report.id == ReportAnalysis.report_id)
+        .where(EventReport.event_id == event_id, Report.status == "approved")
     )
     for analysis in analyses:
         actor_entities.extend(

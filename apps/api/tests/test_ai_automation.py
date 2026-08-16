@@ -13,10 +13,17 @@ from apt_hunter.models import (
     Indicator,
     ObservableEnrichment,
     Report,
+    ReportAnalysis,
     Source,
+    ThreatEvent,
 )
 from apt_hunter.services.ai_gateway import AIAnalysisPayload, ground_analysis
-from apt_hunter.services.automation import _fallback_outcome
+from apt_hunter.services.automation import (
+    AutomationOutcome,
+    _automation_decision,
+    _fallback_outcome,
+    apply_automation_decision,
+)
 from apt_hunter.services.indicator_automation import apply_ai_observable_decisions
 from apt_hunter.services.knowledge import persist_report_knowledge
 from apt_hunter.services.secrets import decrypt_secret, encrypt_secret
@@ -188,7 +195,7 @@ def test_ai_promotes_grounded_indicator_and_respects_human_override() -> None:
     Base.metadata.drop_all(engine)
 
 
-def test_unattended_fallback_continues_without_human_gate() -> None:
+def test_unattended_fallback_fails_closed_without_creating_apt_data() -> None:
     deterministic = SimpleNamespace(
         actors=[{"name": "APT Example"}],
         capabilities=[],
@@ -209,5 +216,144 @@ def test_unattended_fallback_continues_without_human_gate() -> None:
     )
 
     assert outcome.automation_status == "fallback"
-    assert outcome.review_status == "approved"
-    assert outcome.report_status == "approved"
+    assert outcome.review_status == "pending"
+    assert outcome.report_status == "candidate"
+    assert outcome.classification == "irrelevant"
+
+
+def test_strict_apt_gates_cannot_be_bypassed_by_unattended_mode() -> None:
+    policy = {
+        "unattended_mode": True,
+        "relevance_threshold": 60,
+        "auto_approve_threshold": 85,
+        "auto_reject_threshold": 20,
+        "minimum_evidence_coverage": 70,
+    }
+
+    approved = _automation_decision(
+        relevant=True,
+        relevance_score=92,
+        classification="apt_event",
+        verified_confidence=91,
+        verified_coverage=88,
+        verification_approved=True,
+        contradictions=False,
+        verification_failed=False,
+        policy_values=policy,
+    )
+    noisy_news = _automation_decision(
+        relevant=True,
+        relevance_score=90,
+        classification="security_news",
+        verified_confidence=94,
+        verified_coverage=90,
+        verification_approved=True,
+        contradictions=False,
+        verification_failed=False,
+        policy_values=policy,
+    )
+    failed_verification = _automation_decision(
+        relevant=True,
+        relevance_score=92,
+        classification="apt_event",
+        verified_confidence=0,
+        verified_coverage=88,
+        verification_approved=False,
+        contradictions=False,
+        verification_failed=True,
+        policy_values=policy,
+    )
+    non_apt = _automation_decision(
+        relevant=False,
+        relevance_score=8,
+        classification="malware_analysis",
+        verified_confidence=90,
+        verified_coverage=90,
+        verification_approved=True,
+        contradictions=False,
+        verification_failed=False,
+        policy_values=policy,
+    )
+
+    assert approved[:3] == ("auto_approved", "approved", "approved")
+    assert noisy_news[:3] == ("needs_review", "pending", "candidate")
+    assert noisy_news[-1] is True
+    assert failed_verification[:3] == ("needs_review", "pending", "candidate")
+    assert non_apt[:3] == ("auto_rejected", "rejected", "rejected")
+
+
+def test_only_concrete_apt_events_create_threat_events() -> None:
+    engine = create_engine(
+        "sqlite+pysqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    testing_session = sessionmaker(bind=engine, expire_on_commit=False)
+    observed_at = datetime(2026, 8, 16, 8, tzinfo=UTC)
+    with testing_session.begin() as session:
+        source = Source(type="rss", name="Vendor", url="https://vendor.example/feed")
+        session.add(source)
+        session.flush()
+        report = Report(
+            source_id=source.id,
+            title="APT group research profile",
+            canonical_url="https://vendor.example/actor-profile",
+            normalized_text="Actor profile update.",
+            exact_hash="8" * 64,
+            relevance_score=90,
+            relevance_reasons=["actor"],
+            status="candidate",
+            published_at=observed_at,
+        )
+        session.add(report)
+        session.flush()
+        analysis = ReportAnalysis(
+            report_id=report.id,
+            extraction_status="ready",
+            content_text="Actor profile update.",
+        )
+        policy = AIProcessingPolicy(
+            key="default",
+            automation_enabled=True,
+            unattended_mode=True,
+            auto_create_events=True,
+        )
+        session.add_all([analysis, policy])
+        session.flush()
+
+        base_outcome = dict(
+            enabled=True,
+            automation_status="auto_approved",
+            review_status="approved",
+            report_status="approved",
+            relevance_score=92,
+            confidence=91,
+            evidence_coverage=88,
+            summary="Grounded actor research.",
+        )
+        apply_automation_decision(
+            session,
+            report=report,
+            analysis=analysis,
+            outcome=AutomationOutcome(
+                **base_outcome,
+                classification="actor_research",
+            ),
+        )
+        session.flush()
+        assert session.scalar(select(ThreatEvent)) is None
+
+        apply_automation_decision(
+            session,
+            report=report,
+            analysis=analysis,
+            outcome=AutomationOutcome(
+                **base_outcome,
+                classification="apt_event",
+            ),
+        )
+        session.flush()
+        assert session.scalar(select(ThreatEvent)) is not None
+
+    Base.metadata.drop_all(engine)

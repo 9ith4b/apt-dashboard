@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 from apt_hunter.models import AIModelConfig
 from apt_hunter.services.secrets import decrypt_secret
 
-PROMPT_VERSION = "apt-analysis-v3"
-VERIFY_PROMPT_VERSION = "apt-verifier-v3"
+PROMPT_VERSION = "apt-analysis-v4"
+VERIFY_PROMPT_VERSION = "apt-verifier-v4"
 CAMPAIGN_PROMPT_VERSION = "campaign-clustering-v1"
 
 CAMPAIGN_STAGES = {
@@ -479,10 +479,22 @@ def analyze_with_model(
     content: str,
     observables: list[dict[str, object]] | None = None,
 ) -> tuple[AIAnalysisPayload, int]:
-    system = """你是APT威胁情报分析员。分析输入报告并只返回一个JSON对象。禁止补充原文没有的信息。
+    system = """你是一个以低误报为首要目标的APT威胁情报分析员。
+分析输入报告并只返回一个JSON对象。禁止补充原文没有的信息。
+本系统只收录APT/国家级或长期持续定向入侵情报。只有满足以下任一条件才属于APT范围：
+1. 原文明示一个具名、可追踪的国家级/长期持续威胁组织或其厂商跟踪编号正在实施具体行动；
+2. 原文描述具有持续间谍、长期潜伏、定向目标和多阶段入侵证据的具体行动，即使暂未完成归因；
+3. actor_research必须以具名APT组织为研究主体，并提供该组织归因、能力或历史活动的新证据。
+普通恶意软件分析、勒索软件新闻、单个CVE/漏洞公告、补丁信息、通用安全新闻、厂商产品宣传、行业观点、
+合规建议、消费者安全提示均不属于APT；只有原文明示它们被具体APT组织或具体APT行动使用时，才可归为apt_event。
+仅出现attack、campaign、threat、malware、phishing、supply chain等泛化词汇不能证明APT相关。
+classification为apt_event或actor_research时，relevant才允许为true，且relevance_score必须至少60；
+其他classification必须将relevant设为false，并把relevance_score控制在0到40。无法确定时宁可判为irrelevant，禁止猜测。
 每个实体、ATT&CK技术和主张都必须提供原文中的逐字证据片段；无法引用原文的项目必须省略。
 严格区分：fact=可直接观察事实；source_claim=来源明确提出的归因或判断；inference=你的推断。
 归因措辞如疑似、可能、关联不得改写为确认。组织别名只能在上下文明示或有充分证据时关联。
+actors只能填写攻击组织、威胁行动组或厂商跟踪编号；不得填写安全厂商、研究机构、大学、受害者、产品、
+恶意软件家族、漏洞名称、普通犯罪类型、泛称（如attackers/ransomware gang/unknown group）或文章作者。
 所有 confidence 和 relevance_score 都必须是0到100的整数，不得使用0到1的小数或百分比字符串。
 实体必须是对象数组，每项包含name,type,confidence,evidence；能力也必须使用同样的对象格式。
 ATT&CK字段为technique_id,name,tactic,confidence,evidence；主张字段为subject,predicate,object,
@@ -525,9 +537,14 @@ def verify_with_model(
     content: str,
     analysis: AIAnalysisPayload,
 ) -> tuple[AIVerificationPayload, int]:
-    system = """你是独立的APT情报质量验证员。只返回一个JSON对象，不重新生成报告。
-逐项检查分析结论是否有原文证据、是否混淆事实/来源主张/推断、是否过度归因、
-是否存在实体混淆或ATT&CK过度映射。evidence_coverage表示有效证据覆盖比例。
+    system = """你是独立的APT情报质量验证员，以阻止普通安全新闻进入APT知识库为首要目标。
+只返回一个JSON对象，不重新生成报告。
+先验证报告是否确实描述具名APT组织/厂商跟踪编号的具体行动，或具有持续间谍、定向目标和多阶段入侵证据的行动。
+普通恶意软件、勒索软件、CVE、补丁、通用安全新闻、厂商营销和行业观点不得仅因出现攻击术语而通过APT验证。
+classification只有apt_event或严格的actor_research时才允许relevant=true且relevance_score>=60；任何不一致都必须approved=false。
+检查actors是否只包含攻击组织或跟踪编号；厂商、研究机构、大学、受害者、产品、恶意软件和泛称属于实体混淆。
+逐项检查分析结论是否有原文证据、是否混淆事实/来源主张/推断、是否过度归因、是否存在ATT&CK过度映射。
+evidence_coverage表示有效证据覆盖比例。
 confidence和evidence_coverage必须输出0到100的整数，不得输出0到1的小数。
 issues必须是字符串数组。输出字段：approved,confidence,evidence_coverage,issues,
 contradiction_found,decision_reason。"""

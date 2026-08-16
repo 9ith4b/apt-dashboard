@@ -42,6 +42,18 @@ export type ReportSummary = {
   extraction_status: "queued" | "processing" | "ready" | "failed" | null
   review_status: "pending" | "approved" | "rejected" | null
   confidence_auto: number | null
+  ai_classification: string | null
+  ai_relevance_score: number | null
+}
+
+export type ReportScope = "apt" | "raw" | "excluded"
+
+export type ReportCollectionSummary = {
+  total: number
+  apt: number
+  pending: number
+  excluded: number
+  extraction_failed: number
 }
 
 export type ReportAnalysis = {

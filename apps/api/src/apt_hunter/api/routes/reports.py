@@ -2,12 +2,19 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from apt_hunter.db.session import get_db
 from apt_hunter.models import Report, ReportAnalysis, Source
-from apt_hunter.schemas.report import AnalysisRead, ReportDetail, ReportSummary, ReportTaskQueued
+from apt_hunter.schemas.report import (
+    AnalysisRead,
+    ReportCollectionSummary,
+    ReportDetail,
+    ReportSummary,
+    ReportTaskQueued,
+)
+from apt_hunter.services.automation import APT_RELEVANT_CLASSIFICATIONS
 from apt_hunter.services.jobs import create_job, dispatch_job
 
 router = APIRouter()
@@ -31,6 +38,8 @@ def _summary(report: Report, source: Source, analysis: ReportAnalysis | None) ->
         extraction_status=analysis.extraction_status if analysis else None,
         review_status=analysis.review_status if analysis else None,
         confidence_auto=analysis.confidence_auto if analysis else None,
+        ai_classification=analysis.ai_classification if analysis else None,
+        ai_relevance_score=analysis.ai_relevance_score if analysis else None,
     )
 
 
@@ -55,6 +64,7 @@ def list_reports(
     session: DbSession,
     source_id: UUID | None = None,
     report_status: Literal["candidate", "filtered", "approved", "rejected"] | None = None,
+    scope: Literal["apt", "raw", "excluded"] = "raw",
     limit: int = Query(default=50, ge=1, le=200),
 ) -> list[ReportSummary]:
     statement = (
@@ -66,11 +76,66 @@ def list_reports(
         statement = statement.where(Report.source_id == source_id)
     if report_status is not None:
         statement = statement.where(Report.status == report_status)
+    if scope == "apt":
+        statement = statement.where(
+            Report.status == "approved",
+            or_(
+                ReportAnalysis.ai_classification.in_(APT_RELEVANT_CLASSIFICATIONS),
+                ReportAnalysis.reviewed_by.not_in(["ai-automation"]),
+            ),
+        )
+    elif scope == "excluded":
+        statement = statement.where(Report.status.in_(["filtered", "rejected"]))
     statement = statement.order_by(Report.published_at.desc().nullslast()).limit(limit)
     return [
         _summary(report, source, analysis)
         for report, source, analysis in session.execute(statement)
     ]
+
+
+@router.get("/summary", response_model=ReportCollectionSummary)
+def report_collection_summary(session: DbSession) -> ReportCollectionSummary:
+    apt_filter = (
+        Report.status == "approved",
+        or_(
+            ReportAnalysis.ai_classification.in_(APT_RELEVANT_CLASSIFICATIONS),
+            ReportAnalysis.reviewed_by.not_in(["ai-automation"]),
+        ),
+    )
+    return ReportCollectionSummary(
+        total=int(session.scalar(select(func.count()).select_from(Report)) or 0),
+        apt=int(
+            session.scalar(
+                select(func.count())
+                .select_from(Report)
+                .outerjoin(ReportAnalysis, ReportAnalysis.report_id == Report.id)
+                .where(*apt_filter)
+            )
+            or 0
+        ),
+        pending=int(
+            session.scalar(
+                select(func.count()).select_from(Report).where(Report.status == "candidate")
+            )
+            or 0
+        ),
+        excluded=int(
+            session.scalar(
+                select(func.count())
+                .select_from(Report)
+                .where(Report.status.in_(["filtered", "rejected"]))
+            )
+            or 0
+        ),
+        extraction_failed=int(
+            session.scalar(
+                select(func.count())
+                .select_from(ReportAnalysis)
+                .where(ReportAnalysis.extraction_status == "failed")
+            )
+            or 0
+        ),
+    )
 
 
 @router.get("/{report_id}", response_model=ReportDetail)

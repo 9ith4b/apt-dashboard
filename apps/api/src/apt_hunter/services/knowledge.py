@@ -13,6 +13,7 @@ from apt_hunter.models import (
     EventTechnique,
     Evidence,
     Observable,
+    Report,
     ReportObservable,
     ReportTechnique,
 )
@@ -236,7 +237,8 @@ def sync_event_knowledge(session: Session, event_id: UUID) -> None:
     observable_rows = session.scalars(
         select(ReportObservable)
         .join(EventReport, EventReport.report_id == ReportObservable.report_id)
-        .where(EventReport.event_id == event_id)
+        .join(Report, Report.id == ReportObservable.report_id)
+        .where(EventReport.event_id == event_id, Report.status == "approved")
     )
     observables: dict[UUID, ReportObservable] = {}
     for observable_row in observable_rows:
@@ -247,7 +249,8 @@ def sync_event_knowledge(session: Session, event_id: UUID) -> None:
     technique_rows = session.scalars(
         select(ReportTechnique)
         .join(EventReport, EventReport.report_id == ReportTechnique.report_id)
-        .where(EventReport.event_id == event_id)
+        .join(Report, Report.id == ReportTechnique.report_id)
+        .where(EventReport.event_id == event_id, Report.status == "approved")
     )
     techniques: dict[str, ReportTechnique] = {}
     for technique_row in technique_rows:

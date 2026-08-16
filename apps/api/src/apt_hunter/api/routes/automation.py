@@ -29,7 +29,7 @@ from apt_hunter.schemas.automation import (
     AutomationStatusRead,
     BackfillRead,
 )
-from apt_hunter.services.ai_gateway import test_model_connection
+from apt_hunter.services.ai_gateway import PROMPT_VERSION, test_model_connection
 from apt_hunter.services.auth import AuthPrincipal
 from apt_hunter.services.automation import default_model_config, get_or_create_policy
 from apt_hunter.services.jobs import queue_job
@@ -280,9 +280,11 @@ def backfill_filtered_reports(session: DbSession) -> BackfillRead:
             ReportAnalysis.automation_status,
             ReportAnalysis.extraction_status,
             ReportAnalysis.observables,
+            ReportAnalysis.method_version,
+            ReportAnalysis.reviewed_by,
         )
         .outerjoin(ReportAnalysis, ReportAnalysis.report_id == Report.id)
-        .where(Report.status.in_(["candidate", "approved"]))
+        .where(Report.status.in_(["candidate", "approved", "rejected"]))
     ).all()
     exception_ids = set(
         session.scalars(
@@ -306,12 +308,22 @@ def backfill_filtered_reports(session: DbSession) -> BackfillRead:
     retry_automation_statuses = {"not_configured", "fallback", "processing"}
     if policy.unattended_mode:
         retry_automation_statuses.add("needs_review")
+    current_method = f"ai:{PROMPT_VERSION}"
     retry_ids = [
         report_id
-        for report_id, report_status, automation_status, extraction_status, observables in rows
+        for (
+            report_id,
+            report_status,
+            automation_status,
+            extraction_status,
+            observables,
+            method_version,
+            reviewed_by,
+        ) in rows
         if report_id not in active_job_ids
         and (
-            (
+            (reviewed_by in (None, "ai-automation") and method_version != current_method)
+            or (
                 report_status == "candidate"
                 and (
                     automation_status is None

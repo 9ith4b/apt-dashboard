@@ -117,6 +117,43 @@ def test_report_detail_and_review_queue(review_client: tuple[TestClient, str]) -
     assert [item["id"] for item in queue.json()] == [report_id]
 
 
+def test_report_scope_and_summary_use_database_totals(
+    review_client: tuple[TestClient, str],
+) -> None:
+    client, report_id = review_client
+
+    summary = client.get("/api/v1/reports/summary")
+    apt_before_review = client.get("/api/v1/reports?scope=apt")
+    raw = client.get("/api/v1/reports?scope=raw")
+
+    assert summary.status_code == 200
+    assert summary.json() == {
+        "total": 1,
+        "apt": 0,
+        "pending": 1,
+        "excluded": 0,
+        "extraction_failed": 0,
+    }
+    assert apt_before_review.json() == []
+    assert [item["id"] for item in raw.json()] == [report_id]
+
+    approved = client.post(
+        f"/api/v1/reviews/{report_id}/decision",
+        json={
+            "decision": "approved",
+            "analyst_note": "Human review confirms this is an APT event.",
+            "expected_version": 1,
+            "actors": [],
+            "capabilities": [],
+            "infrastructure": [],
+            "victims": [],
+        },
+    )
+    assert approved.status_code == 200
+    assert [item["id"] for item in client.get("/api/v1/reports?scope=apt").json()] == [report_id]
+    assert client.get("/api/v1/reports/summary").json()["apt"] == 1
+
+
 def test_review_decision_is_versioned(review_client: tuple[TestClient, str]) -> None:
     client, report_id = review_client
     payload = {

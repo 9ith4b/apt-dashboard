@@ -332,17 +332,17 @@ function PolicyForm({
   const [form, setForm] = useState(policy)
 
   const numericFields = [
-    ["relevance_threshold", "APT相关性阈值", "用于标记需要关注的边界判断。"],
+    ["relevance_threshold", "APT相关性阈值", "低于此值不会进入APT情报层。"],
     [
       "auto_approve_threshold",
       "自动确认阈值",
-      "低于此值会记录异常；无人值守模式下不阻断AI结论。",
+      "低于此值保留为候选材料，不自动生成确认事件。",
     ],
     ["auto_reject_threshold", "自动排除阈值", "AI明确判断无关时自动排除。"],
     [
       "minimum_evidence_coverage",
       "最低证据覆盖率",
-      "低于此值会进入异常关注清单。",
+      "低于此值保留异常记录并等待自动重试。",
     ],
     [
       "indicator_auto_threshold",
@@ -394,7 +394,7 @@ function PolicyForm({
               <FieldLabel htmlFor="unattended-mode">
                 <FieldTitle>无人值守运营</FieldTitle>
                 <FieldDescription>
-                  AI成功完成后直接发布或排除；低置信度与证据缺口只记录异常，不等待人工放行。
+                  满足APT范围、置信度、证据与验证门禁后自动发布；非APT自动排除，边界材料等待自动重试。
                 </FieldDescription>
               </FieldLabel>
             </Field>
@@ -658,7 +658,7 @@ export function AutomationPage() {
             size="sm"
             variant="outline"
           >
-            <RefreshCcwIcon data-icon="inline-start" /> 历史材料回填
+            <RefreshCcwIcon data-icon="inline-start" /> 按新APT标准重跑历史材料
           </Button>
           <Badge
             variant={
@@ -816,9 +816,9 @@ export function AutomationPage() {
             <div className="flex flex-col gap-4">
               <Alert>
                 <CheckCircle2Icon />
-                <AlertTitle>证据约束持续生效，但不再成为人工门禁</AlertTitle>
+                <AlertTitle>严格APT范围与证据门禁持续生效</AlertTitle>
                 <AlertDescription>
-                  无原文证据、归因冲突或验证失败都会留下异常与审计记录；无人值守模式仍会按AI最终判断继续处理。
+                  无原文证据、分类冲突或验证失败的材料不会进入APT知识库；系统自动记录异常并重试，人工只需按需纠错。
                 </AlertDescription>
               </Alert>
               <PolicyForm
