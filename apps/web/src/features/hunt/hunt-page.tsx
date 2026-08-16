@@ -62,11 +62,15 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { formatDateTime } from "@/features/intelligence/intelligence-format"
 import {
+  countIndicators,
+  countObservables,
   enrichObservable,
   getObservable,
+  indicatorCountQueryKey,
   indicatorQueryKey,
   listIndicators,
   listObservables,
+  observableCountQueryKey,
   observableQueryKey,
   promoteObservable,
   updateIndicator,
@@ -1021,9 +1025,20 @@ export function HuntPage() {
     queryFn: () =>
       listObservables({ q: query || undefined, type: type || undefined }),
   })
+  const observableCountQuery = useQuery({
+    queryKey: [...observableCountQueryKey, query, type],
+    queryFn: () =>
+      countObservables({ q: query || undefined, type: type || undefined }),
+  })
   const indicatorsQuery = useQuery({
-    queryKey: [...indicatorQueryKey, query],
-    queryFn: () => listIndicators({ q: query || undefined }),
+    queryKey: [...indicatorQueryKey, query, type],
+    queryFn: () =>
+      listIndicators({ q: query || undefined, type: type || undefined }),
+  })
+  const indicatorCountQuery = useQuery({
+    queryKey: [...indicatorCountQueryKey, query, type],
+    queryFn: () =>
+      countIndicators({ q: query || undefined, type: type || undefined }),
   })
   const observables = observablesQuery.data ?? []
   const indicators = indicatorsQuery.data ?? []
@@ -1110,7 +1125,7 @@ export function HuntPage() {
             variant={mode === "observables" ? "secondary" : "ghost"}
             onClick={() => setMode("observables")}
           >
-            Observable（{observables.length}）
+            Observable（{observableCountQuery.data ?? observables.length}）
           </Button>
           <Button
             aria-pressed={mode === "indicators"}
@@ -1119,7 +1134,7 @@ export function HuntPage() {
             variant={mode === "indicators" ? "secondary" : "ghost"}
             onClick={() => setMode("indicators")}
           >
-            Indicator（{indicators.length}）
+            Indicator（{indicatorCountQuery.data ?? indicators.length}）
           </Button>
         </div>
       </header>

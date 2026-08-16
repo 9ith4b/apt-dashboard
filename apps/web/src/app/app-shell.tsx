@@ -61,10 +61,10 @@ export function AppShell() {
         <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-card/95 px-3 backdrop-blur-sm sm:px-6">
           <SidebarTrigger className="md:hidden" />
           <div className="flex min-w-0 items-center gap-5">
-            <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
+            <h1 className="shrink-0 truncate text-xl font-semibold tracking-tight sm:text-2xl">
               {title}
             </h1>
-            <span className="hidden items-center gap-2 text-xs text-muted-foreground lg:flex">
+            <span className="hidden items-center gap-2 text-xs whitespace-nowrap text-muted-foreground 2xl:flex">
               <CalendarDaysIcon aria-hidden="true" />
               {dateFormatter.format(new Date())}
             </span>
@@ -90,7 +90,9 @@ export function AppShell() {
               onClick={() => void auth.logout()}
             >
               <CircleUserRoundIcon data-icon="inline-start" />
-              <span className="hidden xl:inline">{auth.user.display_name}</span>
+              <span className="hidden 2xl:inline">
+                {auth.user.display_name}
+              </span>
             </Button>
             <Button asChild className="hidden lg:inline-flex">
               <Link to="/reviews">

@@ -59,8 +59,14 @@ describe("IOC hunting", () => {
         if (url === "/api/v1/observables?limit=200") {
           return Promise.resolve(jsonResponse([observable]))
         }
+        if (url === "/api/v1/observables/count") {
+          return Promise.resolve(jsonResponse(1))
+        }
         if (url === "/api/v1/indicators?limit=200") {
           return Promise.resolve(jsonResponse([indicator]))
+        }
+        if (url === "/api/v1/indicators/count") {
+          return Promise.resolve(jsonResponse(1))
         }
         if (url === `/api/v1/observables/${observable.id}`) {
           return Promise.resolve(

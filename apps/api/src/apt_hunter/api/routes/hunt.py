@@ -188,6 +188,22 @@ def list_observables(
     return _observable_summaries(session, observables)
 
 
+@observables_router.get("/count", response_model=int)
+def count_observables(
+    session: DbSession,
+    q: str | None = Query(default=None, max_length=1000),
+    observable_type: str | None = Query(default=None, max_length=32),
+) -> int:
+    statement = select(func.count()).select_from(Observable)
+    if q:
+        statement = statement.where(
+            func.lower(Observable.value_normalized).contains(q.strip().casefold())
+        )
+    if observable_type:
+        statement = statement.where(Observable.type == observable_type)
+    return int(session.scalar(statement) or 0)
+
+
 @observables_router.get("/{observable_id}", response_model=ObservableDetail)
 def get_observable(observable_id: UUID, session: DbSession) -> ObservableDetail:
     observable = session.get(Observable, observable_id)
@@ -391,6 +407,7 @@ def promote_observable(
 def list_indicators(
     session: DbSession,
     q: str | None = Query(default=None, max_length=1000),
+    observable_type: str | None = Query(default=None, max_length=32),
     revoked: bool | None = None,
     limit: int = Query(default=100, ge=1, le=200),
 ) -> list[IndicatorRead]:
@@ -401,6 +418,8 @@ def list_indicators(
         statement = statement.where(
             func.lower(Observable.value_normalized).contains(q.strip().casefold())
         )
+    if observable_type:
+        statement = statement.where(Observable.type == observable_type)
     if revoked is not None:
         statement = statement.where(Indicator.revoked == revoked)
     rows = list(
@@ -431,6 +450,29 @@ def list_indicators(
         )
         for indicator, observable in rows
     ]
+
+
+@indicators_router.get("/count", response_model=int)
+def count_indicators(
+    session: DbSession,
+    q: str | None = Query(default=None, max_length=1000),
+    observable_type: str | None = Query(default=None, max_length=32),
+    revoked: bool | None = None,
+) -> int:
+    statement = (
+        select(func.count())
+        .select_from(Indicator)
+        .join(Observable, Observable.id == Indicator.observable_id)
+    )
+    if q:
+        statement = statement.where(
+            func.lower(Observable.value_normalized).contains(q.strip().casefold())
+        )
+    if observable_type:
+        statement = statement.where(Observable.type == observable_type)
+    if revoked is not None:
+        statement = statement.where(Indicator.revoked == revoked)
+    return int(session.scalar(statement) or 0)
 
 
 @indicators_router.patch("/{indicator_id}", response_model=IndicatorRead)

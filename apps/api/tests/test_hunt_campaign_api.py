@@ -123,6 +123,12 @@ def test_observable_hunt_enrich_promote_and_revoke(
     assert observable["ai_disposition"] is None
     assert observable["report_count"] == 1
     assert observable["event_count"] == 1
+    assert (
+        hunt_campaign_client.get(
+            "/api/v1/observables/count?q=interview-example.com&observable_type=domain"
+        ).json()
+        == 1
+    )
 
     detail = hunt_campaign_client.get(f"/api/v1/observables/{observable['id']}")
     assert detail.status_code == 200
@@ -166,6 +172,12 @@ def test_observable_hunt_enrich_promote_and_revoke(
     assert (
         hunt_campaign_client.get("/api/v1/indicators?revoked=false").json()[0]["id"]
         == indicator["id"]
+    )
+    assert (
+        hunt_campaign_client.get(
+            "/api/v1/indicators/count?observable_type=domain&revoked=false"
+        ).json()
+        == 1
     )
     assert (
         hunt_campaign_client.post(
@@ -241,9 +253,7 @@ def test_campaign_membership_requires_human_evidence_and_is_reversible(
         },
     )
     assert watch_rule.status_code == 201
-    preview = hunt_campaign_client.post(
-        f"/api/v1/watch-rules/{watch_rule.json()['id']}/preview"
-    )
+    preview = hunt_campaign_client.post(f"/api/v1/watch-rules/{watch_rule.json()['id']}/preview")
     assert preview.status_code == 200
     assert preview.json()["match_count"] == 1
     assert preview.json()["matches"][0]["subject_id"] == event["id"]
