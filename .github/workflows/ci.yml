@@ -55,7 +55,7 @@ jobs:
       - run: ruff format --check apps/api
       - run: ruff check apps/api
       - run: pytest apps/api
-      - run: mypy apps/api/src
+      - run: mypy --config-file apps/api/pyproject.toml apps/api/src
       - run: python apps/api/scripts/export_openapi.py --check
 
   compose:
@@ -64,6 +64,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Compose model
         env:
+          APT_HUNTER_AI_SECRETS_KEY: ci-only-stable-key-at-least-32-characters
           POSTGRES_PASSWORD: ci-only-password
           MINIO_ROOT_PASSWORD: ci-only-password
         run: docker compose -f infra/compose.yaml config --quiet

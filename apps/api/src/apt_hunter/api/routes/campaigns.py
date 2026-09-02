@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -28,6 +28,7 @@ from apt_hunter.schemas.campaign import (
     CampaignDetail,
     CampaignEventRead,
     CampaignEventUpsert,
+    CampaignStatus,
     CampaignSummary,
     CampaignUpdate,
 )
@@ -95,7 +96,7 @@ def _campaign_summaries(
             description=campaign.description,
             first_seen=campaign.first_seen,
             last_seen=campaign.last_seen,
-            status=campaign.status,
+            status=cast(CampaignStatus, campaign.status),
             event_count=counts.get(campaign.id, 0),
             actor_names=actor_names[campaign.id],
             stages=stages[campaign.id],

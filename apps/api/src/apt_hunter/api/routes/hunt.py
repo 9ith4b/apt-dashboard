@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Literal, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -36,6 +36,22 @@ from apt_hunter.schemas.hunt import (
 observables_router = APIRouter()
 indicators_router = APIRouter()
 DbSession = Annotated[Session, Depends(get_db)]
+
+AIObservableDisposition = Literal["malicious", "suspicious", "benign", "context"]
+
+
+def _ai_disposition(value: object) -> AIObservableDisposition | None:
+    if value in {"malicious", "suspicious", "benign", "context"}:
+        return cast(AIObservableDisposition, value)
+    return None
+
+
+def _optional_string(value: object) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _optional_confidence(value: object) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
 def _indicator_summary(indicator: Indicator | None) -> IndicatorSummary | None:
@@ -105,16 +121,22 @@ def _observable_summaries(
             report_count=report_counts.get(observable.id, 0),
             event_count=event_counts.get(observable.id, 0),
             evidence_count=report_counts.get(observable.id, 0),
-            ai_disposition=(ai_contexts[observable.id].result or {}).get("disposition")
+            ai_disposition=_ai_disposition(
+                (ai_contexts[observable.id].result or {}).get("disposition")
+            )
             if observable.id in ai_contexts
             else None,
-            ai_role=(ai_contexts[observable.id].result or {}).get("role")
+            ai_role=_optional_string((ai_contexts[observable.id].result or {}).get("role"))
             if observable.id in ai_contexts
             else None,
-            ai_confidence=(ai_contexts[observable.id].result or {}).get("confidence")
+            ai_confidence=_optional_confidence(
+                (ai_contexts[observable.id].result or {}).get("confidence")
+            )
             if observable.id in ai_contexts
             else None,
-            ai_decision_reason=(ai_contexts[observable.id].result or {}).get("decision_reason")
+            ai_decision_reason=_optional_string(
+                (ai_contexts[observable.id].result or {}).get("decision_reason")
+            )
             if observable.id in ai_contexts
             else None,
             ai_decided_at=ai_contexts[observable.id].queried_at

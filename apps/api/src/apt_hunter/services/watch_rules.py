@@ -101,12 +101,12 @@ def match_event(conditions: WatchConditions, context: EventContext) -> dict[str,
     matched: dict[str, object] = {}
     if conditions.campaign_ids:
         available_campaigns = set(context.campaign_ids)
-        values = [
+        campaign_values = [
             value for value in conditions.campaign_ids if value in available_campaigns
         ]
-        if not values:
+        if not campaign_values:
             return None
-        matched["campaign_ids"] = [str(value) for value in values]
+        matched["campaign_ids"] = [str(value) for value in campaign_values]
     corpus = " ".join(
         (
             context.title,
@@ -117,28 +117,32 @@ def match_event(conditions: WatchConditions, context: EventContext) -> dict[str,
         )
     ).casefold()
     if conditions.keywords:
-        values = [value for value in conditions.keywords if value.casefold() in corpus]
-        if not values:
+        keyword_values = [value for value in conditions.keywords if value.casefold() in corpus]
+        if not keyword_values:
             return None
-        matched["keywords"] = values
+        matched["keywords"] = keyword_values
     if conditions.actor_names:
         actors = " ".join(context.actor_names).casefold()
-        values = [value for value in conditions.actor_names if value.casefold() in actors]
-        if not values:
+        actor_values = [value for value in conditions.actor_names if value.casefold() in actors]
+        if not actor_values:
             return None
-        matched["actor_names"] = values
+        matched["actor_names"] = actor_values
     if conditions.observable_types:
         available = {value.casefold() for value in context.observable_types}
-        values = [value for value in conditions.observable_types if value.casefold() in available]
-        if not values:
+        observable_values = [
+            value for value in conditions.observable_types if value.casefold() in available
+        ]
+        if not observable_values:
             return None
-        matched["observable_types"] = values
+        matched["observable_types"] = observable_values
     if conditions.technique_ids:
         available = {value.upper() for value in context.technique_ids}
-        values = [value for value in conditions.technique_ids if value.upper() in available]
-        if not values:
+        technique_values = [
+            value for value in conditions.technique_ids if value.upper() in available
+        ]
+        if not technique_values:
             return None
-        matched["technique_ids"] = values
+        matched["technique_ids"] = technique_values
     if conditions.min_confidence is not None:
         if context.confidence < conditions.min_confidence:
             return None

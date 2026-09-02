@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -24,6 +24,7 @@ from apt_hunter.schemas.automation import (
     AIModelTestRead,
     AIProcessingPolicyRead,
     AIProcessingPolicyUpdate,
+    AIProvider,
     AutomationExceptionDecision,
     AutomationExceptionRead,
     AutomationStatusRead,
@@ -55,7 +56,7 @@ def _config_read(config: AIModelConfig) -> AIModelConfigRead:
     return AIModelConfigRead(
         id=config.id,
         name=config.name,
-        provider=config.provider,
+        provider=cast(AIProvider, config.provider),
         base_url=config.base_url,
         model=config.model,
         has_api_key=bool(config.api_key_ciphertext),
@@ -454,7 +455,7 @@ def decide_exception(
         report_id=item.report_id,
         report_title=report_title,
         exception_type=item.exception_type,
-        severity=item.severity,
+        severity=cast(Literal["low", "medium", "high", "critical"], item.severity),
         status=item.status,
         title=item.title,
         description=item.description,

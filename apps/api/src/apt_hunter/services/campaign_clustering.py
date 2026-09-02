@@ -122,13 +122,18 @@ def score_campaign_relation(
 
 
 def _is_candidate(score: int, features: dict[str, object]) -> bool:
-    if score < MIN_CANDIDATE_SCORE or int(features["actor_overlap"]) < 1:
+    actor_overlap = features.get("actor_overlap")
+    if score < MIN_CANDIDATE_SCORE or not isinstance(actor_overlap, int) or actor_overlap < 1:
         return False
+    observable_overlap = features.get("observable_overlap")
+    technique_overlap = features.get("technique_overlap")
+    victim_overlap = features.get("victim_overlap")
+    title_similarity = features.get("title_similarity")
     return bool(
-        int(features["observable_overlap"])
-        or int(features["technique_overlap"])
-        or int(features["victim_overlap"])
-        or float(features["title_similarity"]) >= 0.2
+        (isinstance(observable_overlap, int) and observable_overlap)
+        or (isinstance(technique_overlap, int) and technique_overlap)
+        or (isinstance(victim_overlap, int) and victim_overlap)
+        or (isinstance(title_similarity, (int, float)) and title_similarity >= 0.2)
     )
 
 
@@ -382,15 +387,15 @@ def cluster_event(session: Session, event_id: UUID) -> dict[str, object]:
         except ValueError:
             return _independent("AI返回了无效的Campaign ID", candidates=len(scored))
         campaign = campaigns.get(campaign_id)
-        candidate = campaign_scores.get(campaign_id)
-        if campaign is None or candidate is None:
+        selected_candidate = campaign_scores.get(campaign_id)
+        if campaign is None or selected_candidate is None:
             return _independent("AI选择的Campaign不在候选范围内", candidates=len(scored))
         changed = _assign(
             session,
             campaign=campaign,
             event_id=event_id,
             decision=decision,
-            score=candidate.score,
+            score=selected_candidate.score,
         )
         session.flush()
         _refresh_campaign_bounds(session, campaign)

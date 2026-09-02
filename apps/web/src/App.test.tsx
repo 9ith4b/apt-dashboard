@@ -115,8 +115,19 @@ describe("APT Hunter intelligence feed", () => {
             })
           )
         }
-        if (url === "/api/v1/reports?limit=200") {
+        if (url === "/api/v1/reports?scope=apt&limit=200") {
           return Promise.resolve(jsonResponse(reports))
+        }
+        if (url === "/api/v1/reports/summary") {
+          return Promise.resolve(
+            jsonResponse({
+              total: reports.length,
+              apt: reports.length,
+              pending: reports.length,
+              excluded: 0,
+              extraction_failed: 0,
+            })
+          )
         }
         if (url.endsWith(reports[0].id)) {
           return Promise.resolve(jsonResponse({ ...reports[0], analysis }))

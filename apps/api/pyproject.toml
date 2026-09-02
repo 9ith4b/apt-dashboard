@@ -60,3 +60,4 @@ plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
 [[tool.mypy.overrides]]
 module = ["celery", "celery.*", "feedparser", "trafilatura", "trafilatura.*"]
 ignore_missing_imports = true
+disable_error_code = ["import-untyped"]

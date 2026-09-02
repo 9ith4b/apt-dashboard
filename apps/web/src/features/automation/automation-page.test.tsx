@@ -109,7 +109,9 @@ describe("AI automation settings", () => {
     expect(screen.getByText("无人值守运营")).toBeInTheDocument()
     expect(screen.getByText("AI自动维护 Indicator")).toBeInTheDocument()
     expect(
-      screen.getByText("证据约束持续生效，但不再成为人工门禁")
+      screen.getByText(
+        "满足APT范围、置信度、证据与验证门禁后自动发布；非APT自动排除，边界材料等待自动重试。"
+      )
     ).toBeInTheDocument()
   })
 })
