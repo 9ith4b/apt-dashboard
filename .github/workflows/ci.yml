@@ -115,11 +115,13 @@ jobs:
           node-version: "24"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      - name: Prepare isolated E2E environment
+        working-directory: infra
+        run: cp .env.example .env
+      - run: pnpm --filter web exec playwright install --with-deps chromium
       - name: Start isolated application stack
         working-directory: infra
         run: |
-          cp .env.example .env
           docker compose up -d --build
           ./scripts/release-check.sh
       - name: Create isolated E2E administrator
