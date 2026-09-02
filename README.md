@@ -18,7 +18,7 @@ APT Hunter 是一套独立的 AI-first APT 威胁情报采集、分析、狩猎�
 - PostgreSQL/Redis/Celery/MinIO/Prometheus、备份恢复、告警规则、OpenAPI、CI 与 GHCR 发布流水线
 - 桌面与移动端 E2E、WCAG、性能、视觉回归、安全依赖审计和构建体积门禁
 
-部署地址：`http://server.example.com:8180`
+文档示例访问地址：`http://server.example.com:8180`（请替换为实际域名，并在生产环境启用 HTTPS）
 
 初始管理员密码仅保存在服务器的 `/etc/apt-hunter/admin-initial-password`（权限 `0600`）。首次登录后应立即修改密码。
 
@@ -163,4 +163,4 @@ docker compose --env-file .env -f compose.yaml up -d --build
 
 如果健康检查失败，查看 `docker compose ... logs`，将代码和 `APT_HUNTER_IMAGE_TAG` 回滚到上一个已验证提交，再重新执行启动和检查命令。不要删除 PostgreSQL/MinIO 数据卷来处理应用升级问题。
 
-详细状态见 [AI 自动化说明](./docs/ai-automation.md)、[1.0.0 发布说明](./docs/m12-status.md)、[交付完成矩阵](./docs/completion-matrix.md)、[运维与发布手册](./docs/operations-runbook.md) 和 [OpenAPI 契约](./docs/api-contract.md)。
+详细状态见 [AI 自动化说明](./docs/ai-automation.md)、[1.0.0 发布说明](./docs/m12-status.md)、[交付完成矩阵](./docs/completion-matrix.md)、[运维与发布手册](./docs/operations-runbook.md)、[安全与隐私策略](./SECURITY.md) 和 [OpenAPI 契约](./docs/api-contract.md)。

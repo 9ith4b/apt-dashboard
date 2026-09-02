@@ -25,8 +25,16 @@ htmlcov/
 .env
 .env.*
 !.env.example
+.envrc
+.direnv/
 *.pem
 *.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials/
+secrets/
 
 # IDE and OS
 .idea/
@@ -38,4 +46,13 @@ Thumbs.db
 data/
 backups/
 *.log
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.bak
+*.har
+*.pcap
+*.pcapng
+*.bundle
 .pnpm-store/
